@@ -1,0 +1,9 @@
+[submodule "auth-server"]
+	path = auth-server
+	url = https://github.com/dayathapa1234/auth-server.git
+[submodule "gateway-service"]
+	path = gateway-service
+	url = https://github.com/dayathapa1234/gateway-service.git
+[submodule "ml-server"]
+	path = ml-server
+	url = https://github.com/dayathapa1234/ml-server.git
