@@ -12,27 +12,27 @@ This repository contains microservices for the Nuvesta project.
 
 To keep all microservices in separate repositories while managing them from this parent project (`Nuvesta`), follow these steps:
 
-1. Open a terminal in the root of the `Nuvesta` project:
-
-   ```bash
-   cd path/to/Nuvesta
-   ```
-
-2. Add the new submodule:
-
-   ```bash
-   git submodule add https://github.com/YOUR_USERNAME/YOUR_REPO.git folder-name
-   ```
-   Example:
-    ```bash
-    git submodule add https://github.com/dayathapa1234/new-service.git new-service
-    ```  
-3. Commit the changes:
-   ```bash
-   git add .gitmodules folder-name
-   git commit -m "Add new-service as a submodule"
-   git push
-   ```
+   1. Open a terminal in the root of the `Nuvesta` project:
+   
+      ```bash
+      cd path/to/Nuvesta
+      ```
+   
+   2. Add the new submodule:
+   
+      ```bash
+      git submodule add https://github.com/YOUR_USERNAME/YOUR_REPO.git folder-name
+      ```
+      Example:
+       ```bash
+       git submodule add https://github.com/dayathapa1234/new-service.git new-service
+       ```  
+   3. Commit the changes:
+      ```bash
+      git add .gitmodules folder-name
+      git commit -m "Add new-service as a submodule"
+      git push
+      ```
 
 🔄 Cloning the Project with Submodules
 
