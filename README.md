@@ -49,7 +49,7 @@ git submodule update --init --recursive
 git checkout main            # switch to the main branch
 git pull origin main         # update to latest main branch
 cd ..                        # go back to Nuvesta root
-git add auth-server          # stage updated submodule pointer
-git commit -m "Update submodule: auth-server to latest main"
+git add <sub-module>          # stage updated submodule pointer
+git commit -m "Update submodule: <sub-module> to latest main"
 git push                     # push changes to Nuvesta repo
 ```
