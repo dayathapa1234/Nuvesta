@@ -2,10 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Nuvesta" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Nuvesta/auth-server" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Nuvesta/gateway-service" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Nuvesta/ml-server" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/auth-server" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/gateway-service" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/ml-server" vcs="Git" />

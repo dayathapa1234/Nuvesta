@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: market-data-service
+alphavantage:
+  api:
+    key: KOCQERY640FBBCKJ
+logging:
+  level:
+    root: INFO
+    com.nuvesta: DEBUG
