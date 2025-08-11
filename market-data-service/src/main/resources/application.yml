@@ -1,6 +1,12 @@
 spring:
   application:
     name: market-data-service
+  jpa:
+    hibernate:
+      ddl-auto: update
+  threads:
+    virtual:
+      enable: true
 alphavantage:
   api:
     key: KOCQERY640FBBCKJ
