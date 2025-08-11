@@ -1,4 +1,11 @@
 spring:
+  batch:
+    verbose: true
+    jdbc:
+      initialize-schema: always
+      schema: classpath:org/springframework/batch/core/schema-postgresql.sql
+    job:
+      enabled: true
   application:
     name: market-data-service
   jpa:
@@ -12,5 +19,5 @@ alphavantage:
     key: KOCQERY640FBBCKJ
 logging:
   level:
-    root: INFO
-    com.nuvesta: DEBUG
+    org.springframework.jdbc.datasource.init: DEBUG
+    org.springframework.batch.core: DEBUG
