@@ -25,6 +25,7 @@ import java.io.BufferedReader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Configuration
 @EnableBatchProcessing
@@ -89,8 +90,23 @@ public class AlphaVantageSymbolImportJobConfig {
             }
         }
 
-        return new ListItemReader<>(symbols);
+        List<SymbolInfo> nonNullSymbols = symbols.stream()
+                .filter(Objects::nonNull)
+                .toList();
+
+        return new ItemReader<>() {
+            private int nextIndex = 0;
+
+            @Override
+            public SymbolInfo read() {
+                if (nextIndex < nonNullSymbols.size()) {
+                    return nonNullSymbols.get(nextIndex++);
+                }
+                return null;
+            }
+        };
     }
+
 
     @Bean
     public ItemWriter<SymbolInfo> symbolInfoWriter(DataSource dataSource) {
