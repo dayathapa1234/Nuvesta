@@ -51,7 +51,6 @@ public class AlphaVantageSymbolImportJobConfig {
                 .<SymbolInfo,SymbolInfo>chunk(100,transactionManager)
                 .reader(reader)
                 .writer(writer)
-                .taskExecutor(new SimpleAsyncTaskExecutor())
                 .build();
     }
 

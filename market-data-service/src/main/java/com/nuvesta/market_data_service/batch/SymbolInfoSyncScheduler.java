@@ -3,6 +3,7 @@ package com.nuvesta.market_data_service.batch;
 import com.nuvesta.market_data_service.model.SymbolInfo;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
 import com.nuvesta.market_data_service.service.AlphaVantageService;
+import com.nuvesta.market_data_service.service.MarketDataService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
@@ -13,7 +14,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,14 +22,13 @@ import java.util.stream.Collectors;
 public class SymbolInfoSyncScheduler {
 
     private final SymbolInfoRepository repository;
-    private final AlphaVantageService alphaVantageService;
+    private final MarketDataService marketDataService;
     private final JobLauncher jobLauncher;
     private final Job importSymbolJob;
 
-
-    public SymbolInfoSyncScheduler(SymbolInfoRepository repository, AlphaVantageService alphaVantageService, JobLauncher jobLauncher, Job importSymbolJob) {
+    public SymbolInfoSyncScheduler(SymbolInfoRepository repository, MarketDataService marketDataService, JobLauncher jobLauncher, Job importSymbolJob) {
         this.repository = repository;
-        this.alphaVantageService = alphaVantageService;
+        this.marketDataService = marketDataService;
         this.jobLauncher = jobLauncher;
         this.importSymbolJob = importSymbolJob;
     }
@@ -46,7 +45,7 @@ public class SymbolInfoSyncScheduler {
 
     @Scheduled(cron = "0 0 0 * * *")
     public void syncDaily() {
-        List<SymbolInfo> allSymbols = alphaVantageService.getAllSymbols();
+        List<SymbolInfo> allSymbols = marketDataService.getAllSymbols();
         Set<String> existingSymbols = repository.findAll().stream()
                 .map(SymbolInfo::getSymbol).collect(Collectors.toSet());
 
