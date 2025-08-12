@@ -2,10 +2,8 @@ package com.nuvesta.market_data_service.batch;
 
 import com.nuvesta.market_data_service.model.SymbolInfo;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
-import com.nuvesta.market_data_service.service.AlphaVantageService;
 import com.nuvesta.market_data_service.service.MarketDataService;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
