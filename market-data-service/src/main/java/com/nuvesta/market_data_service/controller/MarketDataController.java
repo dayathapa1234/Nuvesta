@@ -20,7 +20,6 @@ public class MarketDataController {
 
     private final MarketDataService marketDataService;
 
-
     public MarketDataController(MarketDataService service) {
         this.marketDataService = service;
     }
