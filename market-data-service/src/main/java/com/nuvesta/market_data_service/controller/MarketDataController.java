@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping
@@ -29,14 +31,22 @@ public class MarketDataController {
         return marketDataService.getAllSymbols();
     }
 
+    @GetMapping("/api/symbol-filters")
+    public Map<String, List<String>> getSymbolFilters() {
+        Map<String, List<String>> filters = new HashMap<>();
+        filters.put("exchanges", marketDataService.getDistinctExchanges());
+        filters.put("assetTypes", marketDataService.getDistinctAssetTypes());
+        filters.put("ipoDates", marketDataService.getDistinctIpoDates());
+        return filters;
+    }
+
     @GetMapping("/api/paginatedSymbols")
     public ResponseEntity<List<SymbolInfo>> getPaginatedSymbols(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String symbol,
-            @RequestParam(name = "asset_type", required = false) String assetType,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(name = "asset_type", required = false) java.util.List<String> assetTypes,
             @RequestParam(name = "delisting_date", required = false) String delistingDate,
-            @RequestParam(required = false) String exchange,
-            @RequestParam(name = "ipo_date", required = false) String ipoDate,
+            @RequestParam(required = false) java.util.List<String> exchange,
+            @RequestParam(name = "ipo_date", required = false) java.util.List<String> ipoDates,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -50,7 +60,7 @@ public class MarketDataController {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<SymbolInfo> result = marketDataService.getSymbols(
-                name, symbol, assetType, delistingDate, exchange, ipoDate, status, pageable
+                keyword, assetTypes, delistingDate, exchange, ipoDates, status, pageable
         );
 
         return ResponseEntity.ok()

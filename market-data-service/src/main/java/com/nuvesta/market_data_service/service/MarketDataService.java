@@ -9,5 +9,17 @@ import java.util.List;
 public interface MarketDataService {
     List<SymbolInfo> getAllSymbols();
 
-    Page<SymbolInfo> getSymbols(String name, String symbol, String assetType, String delistingDate, String exchange, String ipoDate, String status, Pageable pageable);
+    List<String> getDistinctExchanges();
+
+    List<String> getDistinctAssetTypes();
+
+    List<String> getDistinctIpoDates();
+
+    Page<SymbolInfo> getSymbols(String keyword,
+                                List<String> assetTypes,
+                                String delistingDate,
+                                List<String> exchanges,
+                                List<String> ipoDates,
+                                String status,
+                                Pageable pageable);
 }
