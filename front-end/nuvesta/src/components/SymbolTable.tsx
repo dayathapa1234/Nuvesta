@@ -26,7 +26,6 @@ export default function SymbolTable() {
   const [name, setName] = useState("");
   const [exchange, setExchange] = useState("");
   const [assetType, setAssetType] = useState("");
-  const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -36,11 +35,10 @@ export default function SymbolTable() {
     if (name) params.append("name", name);
     if (exchange) params.append("exchange", exchange);
     if (assetType) params.append("asset_type", assetType);
-    if (status) params.append("status", status);
     params.append("page", page.toString());
-    params.append("size", "10");
+    params.append("size", "30");
 
-    fetch(`http://localhost:8080/api/paginatedSymbols?${params.toString()}`)
+    fetch(`/api/paginatedSymbols?${params.toString()}`)
       .then(async (res) => {
         const data: SymbolInfo[] = await res.json();
         const tp = Number(res.headers.get("X-Total-Pages") ?? "0");
@@ -88,14 +86,6 @@ export default function SymbolTable() {
             setPage(0);
           }}
         />
-        <Input
-          placeholder="Status"
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(0);
-          }}
-        />
       </div>
       <Table>
         <TableHeader>
@@ -105,8 +95,6 @@ export default function SymbolTable() {
             <TableHead>Exchange</TableHead>
             <TableHead>Asset Type</TableHead>
             <TableHead>IPO Date</TableHead>
-            <TableHead>Delisting Date</TableHead>
-            <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -117,8 +105,6 @@ export default function SymbolTable() {
               <TableCell>{s.exchange}</TableCell>
               <TableCell>{s.assetType}</TableCell>
               <TableCell>{s.ipoDate}</TableCell>
-              <TableCell>{s.delistingDate}</TableCell>
-              <TableCell>{s.status}</TableCell>
             </TableRow>
           ))}
         </TableBody>
