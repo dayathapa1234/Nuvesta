@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import {
@@ -20,48 +21,97 @@ interface SymbolInfo {
   status: string;
 }
 
+/** ---- helpers for portal dropdown positioning ---- */
+function useAnchorRect(open: boolean) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      if (ref.current) setRect(ref.current.getBoundingClientRect());
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  return { ref, rect };
+}
+
+function PortalDropdown({
+  anchorRect,
+  width = 160,
+  children,
+}: {
+  anchorRect: DOMRect | null;
+  width?: number;
+  children: React.ReactNode;
+}) {
+  if (!anchorRect) return null;
+
+  const top = anchorRect.bottom + window.scrollY;
+  const left = anchorRect.left + window.scrollX;
+
+  return createPortal(
+    <div
+      className="absolute z-50 max-h-60 overflow-auto rounded border bg-white p-2 shadow"
+      style={{ top, left, width }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
+/** -------------------------------------------------- */
+
 export default function SymbolTable() {
   const [symbols, setSymbols] = useState<SymbolInfo[]>([]);
   const [keyword, setKeyword] = useState("");
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
   const [assetTypeFilter, setAssetTypeFilter] = useState<string[]>([]);
-  const [ipoDateFilter, setIpoDateFilter] = useState<string[]>([]);
   const [allExchanges, setAllExchanges] = useState<string[]>([]);
   const [allAssetTypes, setAllAssetTypes] = useState<string[]>([]);
-  const [allIpoDates, setAllIpoDates] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [openFilter, setOpenFilter] = useState<"exchange" | "asset" | null>(
+    null
+  );
   const [sortField, setSortField] = useState<keyof SymbolInfo | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
+  // close on outside click
   useEffect(() => {
     const handler = () => setOpenFilter(null);
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
   }, []);
 
+  // preload filter lists
   useEffect(() => {
     fetch("/api/symbol-filters")
       .then((res) => res.json())
       .then((data) => {
         setAllExchanges(data.exchanges || []);
         setAllAssetTypes(data.assetTypes || []);
-        setAllIpoDates(data.ipoDates || []);
       })
       .catch(() => {
         setAllExchanges([]);
         setAllAssetTypes([]);
-        setAllIpoDates([]);
       });
   }, []);
 
+  // data fetch
   useEffect(() => {
     const params = new URLSearchParams();
     if (keyword) params.append("keyword", keyword);
     exchangeFilter.forEach((e) => params.append("exchange", e));
     assetTypeFilter.forEach((a) => params.append("asset_type", a));
-    ipoDateFilter.forEach((d) => params.append("ipo_date", d));
     if (sortField) {
       params.append("sortBy", sortField);
       params.append("order", sortAsc ? "asc" : "desc");
@@ -80,15 +130,7 @@ export default function SymbolTable() {
         setSymbols([]);
         setTotalPages(0);
       });
-  }, [
-    keyword,
-    exchangeFilter,
-    assetTypeFilter,
-    ipoDateFilter,
-    page,
-    sortField,
-    sortAsc,
-  ]);
+  }, [keyword, exchangeFilter, assetTypeFilter, page, sortField, sortAsc]);
 
   const toggleValue = (
     value: string,
@@ -103,10 +145,14 @@ export default function SymbolTable() {
     setPage(0);
   };
 
-  const sortIndicator = (field: keyof SymbolInfo) => {
-    if (sortField !== field) return null;
-    return sortAsc ? " ↑" : " ↓";
-  };
+  const sortIndicator = (field: keyof SymbolInfo) =>
+    sortField === field ? (sortAsc ? " ↑" : " ↓") : "";
+
+  // anchor refs for dropdowns
+  const exOpen = openFilter === "exchange";
+  const asOpen = openFilter === "asset";
+  const { ref: exRef, rect: exRect } = useAnchorRect(exOpen);
+  const { ref: asRef, rect: asRect } = useAnchorRect(asOpen);
 
   return (
     <div className="space-y-4">
@@ -121,174 +167,111 @@ export default function SymbolTable() {
       <Table>
         <TableHeader>
           <TableRow>
+            {/* Symbol */}
             <TableHead
               className="cursor-pointer"
               onClick={() => {
-                if (sortField === "symbol") {
-                  setSortAsc(!sortAsc);
-                } else {
+                if (sortField === "symbol") setSortAsc(!sortAsc);
+                else {
                   setSortField("symbol");
                   setSortAsc(true);
                 }
                 setPage(0);
               }}
             >
-              {`Symbol${sortIndicator("symbol") ?? ""}`}
+              {`Symbol${sortIndicator("symbol")}`}
             </TableHead>
+
+            {/* Name */}
             <TableHead
               className="cursor-pointer"
               onClick={() => {
-                if (sortField === "name") {
-                  setSortAsc(!sortAsc);
-                } else {
+                if (sortField === "name") setSortAsc(!sortAsc);
+                else {
                   setSortField("name");
                   setSortAsc(true);
                 }
                 setPage(0);
               }}
             >
-              {`Name${sortIndicator("name") ?? ""}`}
+              {`Name${sortIndicator("name")}`}
             </TableHead>
-            <TableHead className="relative">
+
+            {/* Exchange */}
+            <TableHead>
               <div className="flex items-center">
                 <span
                   className="cursor-pointer select-none"
                   onClick={() => {
-                    if (sortField === "exchange") {
-                      setSortAsc(!sortAsc);
-                    } else {
+                    if (sortField === "exchange") setSortAsc(!sortAsc);
+                    else {
                       setSortField("exchange");
                       setSortAsc(true);
                     }
                     setPage(0);
                   }}
                 >
-                  {`Exchange${sortIndicator("exchange") ?? ""}`}
+                  {`Exchange${sortIndicator("exchange")}`}
                 </span>
                 <span
+                  ref={exRef}
                   className="ml-1 cursor-pointer select-none"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setOpenFilter(
-                      openFilter === "exchange" ? null : "exchange"
-                    );
+                    setOpenFilter(exOpen ? null : "exchange");
                   }}
                 >
                   ▼
                 </span>
               </div>
-              {openFilter === "exchange" && (
-                <div
-                  className="absolute left-0 mt-2 w-40 max-h-60 overflow-auto rounded border bg-white p-2 shadow z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {allExchanges.map((e) => (
-                    <label key={e} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={exchangeFilter.includes(e)}
-                        onChange={() =>
-                          toggleValue(e, exchangeFilter, setExchangeFilter)
-                        }
-                      />
-                      <span>{e}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
             </TableHead>
-            <TableHead className="relative">
+
+            {/* Asset Type */}
+            <TableHead>
               <div className="flex items-center">
                 <span
                   className="cursor-pointer select-none"
                   onClick={() => {
-                    if (sortField === "assetType") {
-                      setSortAsc(!sortAsc);
-                    } else {
+                    if (sortField === "assetType") setSortAsc(!sortAsc);
+                    else {
                       setSortField("assetType");
                       setSortAsc(true);
                     }
                     setPage(0);
                   }}
                 >
-                  {`Asset Type${sortIndicator("assetType") ?? ""}`}
+                  {`Asset Type${sortIndicator("assetType")}`}
                 </span>
                 <span
+                  ref={asRef}
                   className="ml-1 cursor-pointer select-none"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setOpenFilter(openFilter === "asset" ? null : "asset");
+                    setOpenFilter(asOpen ? null : "asset");
                   }}
                 >
                   ▼
                 </span>
               </div>
-              {openFilter === "asset" && (
-                <div
-                  className="absolute left-0 mt-2 w-40 max-h-60 overflow-auto rounded border bg-white p-2 shadow z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {allAssetTypes.map((a) => (
-                    <label key={a} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={assetTypeFilter.includes(a)}
-                        onChange={() =>
-                          toggleValue(a, assetTypeFilter, setAssetTypeFilter)
-                        }
-                      />
-                      <span>{a}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
             </TableHead>
-            <TableHead className="relative">
-              <div className="flex items-center">
-                <span
-                  className="cursor-pointer select-none"
-                  onClick={() => {
-                    if (sortField === "ipoDate") {
-                      setSortAsc(!sortAsc);
-                    } else {
-                      setSortField("ipoDate");
-                      setSortAsc(true);
-                    }
-                    setPage(0);
-                  }}
-                >
-                  {`IPO Date${sortIndicator("ipoDate") ?? ""}`}
-                </span>
-                <span
-                  className="ml-1 cursor-pointer select-none"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenFilter(openFilter === "ipo" ? null : "ipo");
-                  }}
-                ></span>
-              </div>
-              {openFilter === "ipo" && (
-                <div
-                  className="absolute left-0 mt-2 w-40 max-h-60 overflow-auto rounded border bg-white p-2 shadow z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {allIpoDates.map((d) => (
-                    <label key={d} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={ipoDateFilter.includes(d)}
-                        onChange={() =>
-                          toggleValue(d, ipoDateFilter, setIpoDateFilter)
-                        }
-                      />
-                      <span>{d}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+
+            {/* IPO Date - Sort only */}
+            <TableHead
+              className="cursor-pointer"
+              onClick={() => {
+                if (sortField === "ipoDate") setSortAsc(!sortAsc);
+                else {
+                  setSortField("ipoDate");
+                  setSortAsc(true);
+                }
+                setPage(0);
+              }}
+            >
+              {`IPO Date${sortIndicator("ipoDate")}`}
             </TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
           {symbols.map((s) => (
             <TableRow key={s.symbol}>
@@ -301,6 +284,7 @@ export default function SymbolTable() {
           ))}
         </TableBody>
       </Table>
+
       <div className="flex items-center justify-end space-x-2">
         <Button
           variant="outline"
@@ -322,6 +306,42 @@ export default function SymbolTable() {
           Next
         </Button>
       </div>
+
+      {/* Exchange filter dropdown */}
+      {exOpen && (
+        <PortalDropdown anchorRect={exRect}>
+          {allExchanges.map((e) => (
+            <label key={e} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={exchangeFilter.includes(e)}
+                onChange={() =>
+                  toggleValue(e, exchangeFilter, setExchangeFilter)
+                }
+              />
+              <span>{e}</span>
+            </label>
+          ))}
+        </PortalDropdown>
+      )}
+
+      {/* Asset Type filter dropdown */}
+      {asOpen && (
+        <PortalDropdown anchorRect={asRect}>
+          {allAssetTypes.map((a) => (
+            <label key={a} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={assetTypeFilter.includes(a)}
+                onChange={() =>
+                  toggleValue(a, assetTypeFilter, setAssetTypeFilter)
+                }
+              />
+              <span>{a}</span>
+            </label>
+          ))}
+        </PortalDropdown>
+      )}
     </div>
   );
 }
