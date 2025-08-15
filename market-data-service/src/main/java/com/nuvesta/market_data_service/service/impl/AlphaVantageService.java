@@ -1,7 +1,8 @@
-package com.nuvesta.market_data_service.service;
+package com.nuvesta.market_data_service.service.impl;
 
 import com.nuvesta.market_data_service.model.SymbolInfo;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
+import com.nuvesta.market_data_service.service.MarketDataService;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +14,7 @@ import java.util.List;
 
 @Service
 @Primary
-public class AlphaVantageService implements MarketDataService{
+public class AlphaVantageService implements MarketDataService {
 
     private final SymbolInfoRepository symbolInfoRepository;
 
