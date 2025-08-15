@@ -1,9 +1,5 @@
 package com.nuvesta.market_data_service.batch;
 
-import com.nuvesta.market_data_service.model.DailyPrice;
-import com.nuvesta.market_data_service.repository.DailyPriceRepository;
-import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
-import com.nuvesta.market_data_service.service.impl.StooqService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
@@ -14,8 +10,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDate;
 
 @Component
 @Profile("!test")

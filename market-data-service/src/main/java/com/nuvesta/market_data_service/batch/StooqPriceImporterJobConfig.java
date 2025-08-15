@@ -3,10 +3,10 @@ package com.nuvesta.market_data_service.batch;
 import com.nuvesta.market_data_service.model.DailyPrice;
 import com.nuvesta.market_data_service.repository.DailyPriceRepository;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
-import com.nuvesta.market_data_service.service.impl.StooqService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
@@ -66,6 +66,7 @@ public class StooqPriceImporterJobConfig {
     }
 
     @Bean
+    @StepScope
     public ItemReader<DailyPrice> stooqPriceReader() {
         List<DailyPrice> prices = new ArrayList<>();
         symbolInfoRepository.findAll().forEach(info -> {
