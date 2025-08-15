@@ -4,6 +4,10 @@ import com.nuvesta.market_data_service.model.DailyPrice;
 import com.nuvesta.market_data_service.repository.DailyPriceRepository;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
 import com.nuvesta.market_data_service.service.impl.StooqService;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
@@ -18,37 +22,28 @@ import java.time.LocalDate;
 @ConditionalOnProperty(name = "stooq.update.enabled", havingValue = "true", matchIfMissing = true)
 public class StooqPriceSyncScheduler {
 
-    private final SymbolInfoRepository symbolInfoRepository;
-    private final DailyPriceRepository dailyPriceRepository;
-    private final StooqService stooqService;
+    private final JobLauncher jobLauncher;
+    private final Job importStooqPriceJob;
 
-    public StooqPriceSyncScheduler(SymbolInfoRepository symbolInfoRepository,
-                                   DailyPriceRepository dailyPriceRepository,
-                                   StooqService stooqService) {
-        this.symbolInfoRepository = symbolInfoRepository;
-        this.dailyPriceRepository = dailyPriceRepository;
-        this.stooqService = stooqService;
+    public StooqPriceSyncScheduler(JobLauncher jobLauncher, Job importStooqPriceJob) {
+        this.jobLauncher = jobLauncher;
+        this.importStooqPriceJob = importStooqPriceJob;
     }
 
     @EventListener(ApplicationReadyEvent.class)
-    public void loadOnStartup() {
-        updatePrices();
+    public void loadOnStartup() throws Exception {
+        runJob();
     }
 
     @Scheduled(cron = "0 0 0 * * *")
-    public void syncDaily() {
-        updatePrices();
+    public void syncDaily() throws Exception {
+        runJob();
     }
 
-    private void updatePrices() {
-        symbolInfoRepository.findAll().forEach(info -> {
-            LocalDate lastDate = dailyPriceRepository.findTopBySymbolOrderByDateDesc(info.getSymbol())
-                    .map(DailyPrice::getDate)
-                    .orElse(null);
-            var prices = stooqService.fetchPricesAfter(info.getSymbol(), lastDate);
-            if (!prices.isEmpty()) {
-                dailyPriceRepository.saveAll(prices);
-            }
-        });
+    private void runJob() throws Exception {
+        JobParameters params = new JobParametersBuilder()
+                .addLong("startAt", System.currentTimeMillis())
+                .toJobParameters();
+        jobLauncher.run(importStooqPriceJob, params);
     }
 }
