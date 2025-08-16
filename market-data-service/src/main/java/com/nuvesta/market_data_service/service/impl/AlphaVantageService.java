@@ -1,6 +1,7 @@
 package com.nuvesta.market_data_service.service.impl;
 
 import com.nuvesta.market_data_service.model.SymbolInfo;
+import com.nuvesta.market_data_service.repository.DailyPriceRepository;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
 import com.nuvesta.market_data_service.service.MarketDataService;
 import com.nuvesta.market_data_service.service.PriceService;
@@ -10,20 +11,22 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Primary
 public class AlphaVantageService implements MarketDataService {
 
     private final SymbolInfoRepository symbolInfoRepository;
-    private final PriceService priceService;
+    private final DailyPriceRepository dailyPriceRepository;
 
-    public AlphaVantageService(SymbolInfoRepository symbolInfoRepository, PriceService priceService) {
+    public AlphaVantageService(SymbolInfoRepository symbolInfoRepository, DailyPriceRepository dailyPriceRepository) {
         this.symbolInfoRepository = symbolInfoRepository;
-        this.priceService = priceService;
-    }
+        this.dailyPriceRepository = dailyPriceRepository;}
 
     @Override
     public List<SymbolInfo> getAllSymbols() {
@@ -84,6 +87,22 @@ public class AlphaVantageService implements MarketDataService {
         }
 
         Specification<SymbolInfo> spec = Specification.allOf(parts);
-        return symbolInfoRepository.findAll(spec, pageable);
+        Page<SymbolInfo> pageResult = symbolInfoRepository.findAll(spec, pageable);
+
+        List<String> symbols = pageResult.getContent().stream()
+                .map(SymbolInfo::getSymbol)
+                .toList();
+
+        if (!symbols.isEmpty()) {
+            Map<String, BigDecimal> priceMap = dailyPriceRepository
+                    .findLatestCloseBySymbolIn(symbols)
+                    .stream()
+                    .collect(Collectors.toMap(r -> (String) r[0], r -> (BigDecimal) r[1]));
+
+            pageResult.getContent().forEach(si ->
+                    si.setLatestPrice(priceMap.get(si.getSymbol())));
+        }
+
+        return pageResult;
     }
 }

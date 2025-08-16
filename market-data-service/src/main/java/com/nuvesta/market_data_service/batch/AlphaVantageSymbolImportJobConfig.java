@@ -81,7 +81,8 @@ public class AlphaVantageSymbolImportJobConfig {
                                 parts[3], // assetType
                                 parts[4], // ipoDate
                                 parts[5], // delistingDate
-                                parts[6]  // status
+                                parts[6],  // status
+                                null      // latestPrice
                         ));
                     }
                 }

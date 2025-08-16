@@ -13,31 +13,31 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile("!test")
-@ConditionalOnProperty(name = "stooq.update.enabled", havingValue = "true", matchIfMissing = true)
-public class StooqPriceSyncScheduler {
+@ConditionalOnProperty(name = "yahoo.update.enabled", havingValue = "true", matchIfMissing = true)
+public class YahooPriceSyncScheduler {
 
     private final JobLauncher jobLauncher;
-    private final Job importStooqPriceJob;
+    private final Job importYahooPriceJob;
 
-    public StooqPriceSyncScheduler(JobLauncher jobLauncher, Job importStooqPriceJob) {
+    public YahooPriceSyncScheduler(JobLauncher jobLauncher, Job importYahooPriceJob) {
         this.jobLauncher = jobLauncher;
-        this.importStooqPriceJob = importStooqPriceJob;
+        this.importYahooPriceJob = importYahooPriceJob;
     }
 
-//    @EventListener(ApplicationReadyEvent.class)
-//    public void loadOnStartup() throws Exception {
-//        runJob();
-//    }
-//
-//    @Scheduled(cron = "0 0 0 * * *")
-//    public void syncDaily() throws Exception {
-//        runJob();
-//    }
+    @EventListener(ApplicationReadyEvent.class)
+    public void loadOnStartup() throws Exception {
+        runJob();
+    }
+
+    @Scheduled(cron = "0 0 0 * * *")
+    public void syncDaily() throws Exception {
+        runJob();
+    }
 
     private void runJob() throws Exception {
         JobParameters params = new JobParametersBuilder()
                 .addLong("startAt", System.currentTimeMillis())
                 .toJobParameters();
-        jobLauncher.run(importStooqPriceJob, params);
+        jobLauncher.run(importYahooPriceJob, params);
     }
 }

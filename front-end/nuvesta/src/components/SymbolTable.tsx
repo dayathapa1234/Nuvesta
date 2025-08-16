@@ -19,6 +19,7 @@ interface SymbolInfo {
   ipoDate: string;
   delistingDate: string;
   status: string;
+  latestPrice: number | null;
 }
 
 /** ---- helpers for portal dropdown positioning ---- */
@@ -197,6 +198,9 @@ export default function SymbolTable() {
               {`Name${sortIndicator("name")}`}
             </TableHead>
 
+            {/* Latest Price */}
+            <TableHead>Latest Price</TableHead>
+
             {/* Exchange */}
             <TableHead>
               <div className="flex items-center">
@@ -277,6 +281,7 @@ export default function SymbolTable() {
             <TableRow key={s.symbol}>
               <TableCell>{s.symbol}</TableCell>
               <TableCell>{s.name}</TableCell>
+              <TableCell>{s.latestPrice ?? "-"}</TableCell>
               <TableCell>{s.exchange}</TableCell>
               <TableCell>{s.assetType}</TableCell>
               <TableCell>{s.ipoDate}</TableCell>

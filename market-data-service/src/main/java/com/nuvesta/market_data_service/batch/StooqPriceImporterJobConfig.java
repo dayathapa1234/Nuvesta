@@ -14,6 +14,8 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.support.ListItemReader;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,8 +58,8 @@ public class StooqPriceImporterJobConfig {
     @Bean
     public Step priceImportStep(JobRepository jobRepository,
                                 PlatformTransactionManager transactionManager,
-                                ItemReader<DailyPrice> reader,
-                                ItemWriter<DailyPrice> writer) {
+                                @Qualifier("stooqPriceReader") ItemReader<DailyPrice> reader,
+                                @Qualifier("stooqPriceWriter") ItemWriter<DailyPrice> writer) {
         return new StepBuilder("priceImportStep", jobRepository)
                 .<DailyPrice, DailyPrice>chunk(100, transactionManager)
                 .reader(reader)
@@ -67,7 +69,7 @@ public class StooqPriceImporterJobConfig {
 
     @Bean
     @StepScope
-    public ItemReader<DailyPrice> stooqPriceReader() {
+    public ListItemReader<DailyPrice> stooqPriceReader() {
         List<DailyPrice> prices = new ArrayList<>();
         symbolInfoRepository.findAll().forEach(info -> {
             LocalDate lastDate = dailyPriceRepository.findTopBySymbolOrderByDateDesc(info.getSymbol())
@@ -102,17 +104,7 @@ public class StooqPriceImporterJobConfig {
                         }
                     });
         });
-        return new ItemReader<>() {
-            private int nextIndex = 0;
-
-            @Override
-            public DailyPrice read() {
-                if (nextIndex < prices.size()) {
-                    return prices.get(nextIndex++);
-                }
-                return null;
-            }
-        };
+        return new ListItemReader<>(prices);
     }
 
     @Bean
