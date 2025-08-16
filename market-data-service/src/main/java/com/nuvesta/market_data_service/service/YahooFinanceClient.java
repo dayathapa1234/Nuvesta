@@ -28,6 +28,7 @@ public class YahooFinanceClient {
 
     private final HttpClient http = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
+            .version(HttpClient.Version.HTTP_1_1)
             .build();
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -49,38 +50,55 @@ public class YahooFinanceClient {
                 return List.of();
             }
 
-            // Clamp date window
+            // ---- clamp end to today-UTC without mutating the captured vars ----
             LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
-            if (end.isAfter(todayUtc)) end = todayUtc;
-            if (end.isBefore(start)) {
-                if (log.isDebugEnabled()) log.debug("No new window for {}: start {} > end {}", rawSymbol, start, end);
+            LocalDate adjEnd = end.isAfter(todayUtc) ? todayUtc : end;
+            if (adjEnd.isBefore(start)) {
+                if (log.isDebugEnabled()) log.debug("No new window for {}: start {} > end {}", rawSymbol, start, adjEnd);
                 return List.of();
             }
 
-            // Safety widen to survive weekends/holidays, then filter back to [start,end]
+            // widen request a bit to survive weekends/holidays; we'll filter back to [start, adjEnd]
             LocalDate reqStart = start.minusDays(7);
-            if (reqStart.isAfter(end)) reqStart = start;
+            if (reqStart.isAfter(adjEnd)) reqStart = start;
 
             long p1 = reqStart.atStartOfDay(ZoneId.of("UTC")).toEpochSecond();
-            long p2 = end.plusDays(1).atStartOfDay(ZoneId.of("UTC")).toEpochSecond(); // inclusive
+            long p2 = adjEnd.plusDays(1).atStartOfDay(ZoneId.of("UTC")).toEpochSecond(); // inclusive
 
-            // Try cached alias first
+            // >>> make effectively-final copies for the lambda <<<
+            final LocalDate from = start;
+            final LocalDate to   = adjEnd;
+
+            // NEW: track which symbols we've already attempted in THIS call
+            Set<String> attempted = new HashSet<>();
+
+            // helper that avoids duplicate calls and captures only final/effectively-final vars
+            java.util.function.Function<String, List<DailyPrice>> tryOnce = (sym) -> {
+                String key = sym.toUpperCase(Locale.ROOT);
+                if (!attempted.add(key)) {
+                    if (log.isDebugEnabled()) log.debug("Already tried {} in this fetch, skipping duplicate", sym);
+                    return List.of();
+                }
+                return filterWindow(tryChart(sym, p1, p2), from, to);
+            };
+
+            // 0) cached alias
             String cached = aliasCache.get(rawSymbol);
             if (cached != null) {
-                List<DailyPrice> rows = filterWindow(tryChart(cached, p1, p2), start, end);
+                List<DailyPrice> rows = tryOnce.apply(cached);
                 if (!rows.isEmpty()) return normalizeSymbol(rows, cached);
             }
 
-            // Try a set of normalized variants, in order
+            // 1) local variants
             for (String sym : buildVariants(rawSymbol)) {
-                List<DailyPrice> rows = filterWindow(tryChart(sym, p1, p2), start, end);
+                List<DailyPrice> rows = tryOnce.apply(sym);
                 if (!rows.isEmpty()) {
                     aliasCache.put(rawSymbol, sym);
                     return normalizeSymbol(rows, sym);
                 }
             }
 
-            // Resolve via Yahoo search (adds .AX/.L, etc.) and retry
+            // 2) resolver
             Optional<String> resolved = resolveSymbol(rawSymbol);
             if (resolved.isPresent()) {
                 String ySym = resolved.get();
@@ -88,11 +106,10 @@ public class YahooFinanceClient {
                     log.info("Resolved Yahoo symbol {} -> {}", rawSymbol, ySym);
                 }
                 aliasCache.put(rawSymbol, ySym);
-                List<DailyPrice> rows = filterWindow(tryChart(ySym, p1, p2), start, end);
+                List<DailyPrice> rows = tryOnce.apply(ySym);   // will skip if already attempted
                 if (!rows.isEmpty()) return normalizeSymbol(rows, ySym);
             }
 
-            // Quiet skip for empty/delisted
             if (log.isDebugEnabled()) log.debug("No data for symbol {} (after resolve attempt). Skipping.", rawSymbol);
             return List.of();
 
@@ -102,11 +119,10 @@ public class YahooFinanceClient {
         }
     }
 
-    /** Build likely Yahoo variants for quirky tickers (units/warrants/classes). */
+
     private List<String> buildVariants(String raw) {
         String s = raw.trim().toUpperCase(Locale.ROOT);
 
-        // Base cleanups
         String cleaned = s.replace(' ', '-')
                 .replace('/', '-')
                 .replaceAll("\\.([A-Z])$", "-$1"); // BRK.B -> BRK-B
@@ -115,47 +131,49 @@ public class YahooFinanceClient {
         variants.add(s);
         variants.add(cleaned);
 
-        // Units: -U -> -UN (NYSE/AMEX convention on Yahoo)
         if (cleaned.matches(".*-U$")) {
             variants.add(cleaned.substring(0, cleaned.length() - 2) + "-UN");
         }
-        // Warrants: -W -> -WT (common on Yahoo)
         if (cleaned.matches(".*-W$")) {
             variants.add(cleaned.substring(0, cleaned.length() - 2) + "-WT");
         }
-        // Some feeds use ".U" or ".W"
         if (s.matches(".*\\.U$")) variants.add(s.substring(0, s.length() - 2) + "-UN");
         if (s.matches(".*\\.W$")) variants.add(s.substring(0, s.length() - 2) + "-WT");
 
-        // Deduplicate while preserving order
         return new ArrayList<>(variants);
     }
 
-    /** Call Yahoo chart API v8 for a given symbol and unix-second range. */
+    /** Build the exact chart URL (used for logging + requests). */
+    private String buildChartUrl(String symbol, long period1, long period2) {
+        return String.format(
+                "https://query2.finance.yahoo.com/v8/finance/chart/%s?period1=%d&period2=%d&interval=1d&events=div%%2Csplit",
+                URLEncoder.encode(symbol, StandardCharsets.UTF_8),
+                period1, period2
+        );
+    }
+
     private List<DailyPrice> tryChart(String symbol, long period1, long period2) {
         try {
-            String url = String.format(
-                    "https://query2.finance.yahoo.com/v8/finance/chart/%s?period1=%d&period2=%d&interval=1d&events=div%%2Csplit",
-                    URLEncoder.encode(symbol, StandardCharsets.UTF_8),
-                    period1, period2
-            );
+            String url = buildChartUrl(symbol, period1, period2);
+
+            // 🔎 Print the exact URL being called
+            log.info("GET {}", url);
 
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("User-Agent", "Mozilla/5.0")
                     .header("Accept", "application/json")
+                    .header("Accept-Language", "en-US,en;q=0.9")
                     .build();
 
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
-            // Empty window (weekend/future) — treat as empty
             if (resp.statusCode() == 400 && resp.body() != null
                     && resp.body().contains("Data doesn't exist for startDate")) {
                 if (log.isDebugEnabled()) log.debug("Empty window for {}: {}", symbol, resp.body());
                 return List.of();
             }
 
-            // Delisted or unknown — treat as empty (not a warning)
             if (resp.statusCode() == 404) {
                 if (log.isDebugEnabled()) log.debug("Not found (delisted?) for {}: {}", symbol,
                         resp.body() == null ? "" : resp.body());
@@ -163,7 +181,6 @@ public class YahooFinanceClient {
             }
 
             if (resp.statusCode() != 200) {
-                // Unexpected; keep as WARN
                 String body = resp.body();
                 log.warn("Yahoo chart API {} returned {}: {}",
                         symbol, resp.statusCode(),
@@ -179,19 +196,21 @@ public class YahooFinanceClient {
         }
     }
 
-    /** Resolve a raw symbol to Yahoo canonical via the search endpoint. */
     private Optional<String> resolveSymbol(String raw) {
         try {
             String url = "https://query2.finance.yahoo.com/v1/finance/search?q="
                     + URLEncoder.encode(raw, StandardCharsets.UTF_8)
                     + "&quotesCount=5&newsCount=0";
 
+            // 🔎 Only DEBUG to avoid noise
+            if (log.isDebugEnabled()) log.debug("SEARCH {}", url);
+
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("User-Agent", "Mozilla/5.0")
                     .header("Accept", "application/json")
+                    .header("Accept-Language", "en-US,en;q=0.9")
                     .build();
-
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() != 200 || resp.body() == null || resp.body().isBlank()) {
                 return Optional.empty();
@@ -226,7 +245,6 @@ public class YahooFinanceClient {
 
         JsonNode err = root.path("error");
         if (!err.isNull() && !err.isMissingNode()) {
-            // Known non-fatal errors should be DEBUG
             String code = err.path("code").asText("");
             String desc = err.path("description").asText("");
             if (log.isDebugEnabled()) log.debug("Yahoo error for {}: {} - {}", symbol, code, desc);

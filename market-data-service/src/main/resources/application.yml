@@ -18,9 +18,8 @@ alphavantage:
     key: KOCQERY640FBBCKJ
 logging:
   level:
-    org.springframework.jdbc.datasource.init: DEBUG
-    org.springframework.batch.core: DEBUG
+    org.springframework.jdbc.datasource.init: INFO
+    org.springframework.batch.core: INFO
 
-yahoo:
-  request:
-    delay-ms: 1200
+server:
+  port: 8081
