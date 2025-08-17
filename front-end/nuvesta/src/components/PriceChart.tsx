@@ -23,6 +23,8 @@ export default function PriceChart({ symbol }: { symbol: string }) {
   console.log("PriceChart", symbol);
   const [data, setData] = useState<PricePoint[]>([]);
 
+  const formatDate = (value: number) => new Date(value).toLocaleDateString();
+
   useEffect(() => {
     fetch(`/api/prices?symbol=${symbol}`)
       .then((res) => res.json())
@@ -43,10 +45,18 @@ export default function PriceChart({ symbol }: { symbol: string }) {
           tickLine={false}
           axisLine={false}
           tickMargin={8}
+          tickFormatter={formatDate}
         />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent hideLabel />}
+          content={
+            <ChartTooltipContent
+              labelFormatter={(_, payload) => {
+                const date = (payload?.[0]?.payload as PricePoint)?.time;
+                return date ? formatDate(date) : "";
+              }}
+            />
+          }
         />
         <Line
           dataKey="price"
