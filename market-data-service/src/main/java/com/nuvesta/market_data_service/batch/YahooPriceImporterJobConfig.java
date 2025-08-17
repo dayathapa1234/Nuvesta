@@ -30,6 +30,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Configuration
@@ -70,7 +71,7 @@ public class YahooPriceImporterJobConfig {
                                      @Qualifier("yahooPriceReader") ItemReader<DailyPrice> yahooPriceReader,
                                      @Qualifier("yahooPriceWriter") ItemWriter<DailyPrice> yahooPriceWriter) {
         return new StepBuilder("yahooPriceImportStep", jobRepository)
-                .<DailyPrice, DailyPrice>chunk(100, transactionManager)
+                .<DailyPrice, DailyPrice>chunk(5000, transactionManager)
                 .reader(yahooPriceReader)
                 .writer(yahooPriceWriter)
                 .build();
@@ -79,12 +80,15 @@ public class YahooPriceImporterJobConfig {
     @Bean
     @StepScope
     public ItemReader<DailyPrice> yahooPriceReader() {
-        List<DailyPrice> buffer = new ArrayList<>();
+
+        // Use a thread-safe list because we'll populate it from multiple threads
+        List<DailyPrice> buffer = Collections.synchronizedList(new ArrayList<>());
 
         final LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
         final LocalDate endEff = lastWeekday(todayUtc); // avoid empty weekend/holiday windows
 
-        symbolInfoRepository.findAll().forEach(info -> {
+        // Fetch history for all symbols in parallel to speed up large imports
+        symbolInfoRepository.findAll().parallelStream().forEach(info -> {
             String symbol = info.getSymbol();
 
             LocalDate lastDate = dailyPriceRepository.findTopBySymbolOrderByDateDesc(symbol)
@@ -144,6 +148,8 @@ public class YahooPriceImporterJobConfig {
                         "VALUES (:symbol, :date, :open, :high, :low, :close, :volume) " +
                         "ON CONFLICT (symbol, date) DO NOTHING")
                 .beanMapped()
+                // Skip assertion since ON CONFLICT DO NOTHING returns 0 for existing rows
+                .assertUpdates(false)
                 .build();
 
         delegate.afterPropertiesSet();
