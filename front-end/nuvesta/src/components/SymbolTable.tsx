@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -22,7 +23,6 @@ interface SymbolInfo {
   latestPrice: number | null;
 }
 
-/** ---- helpers for portal dropdown positioning ---- */
 function useAnchorRect(open: boolean) {
   const ref = useRef<HTMLSpanElement | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -69,9 +69,9 @@ function PortalDropdown({
     document.body
   );
 }
-/** -------------------------------------------------- */
 
 export default function SymbolTable() {
+  const navigate = useNavigate();
   const [symbols, setSymbols] = useState<SymbolInfo[]>([]);
   const [keyword, setKeyword] = useState("");
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
@@ -86,7 +86,6 @@ export default function SymbolTable() {
   const [sortField, setSortField] = useState<keyof SymbolInfo | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
-  // close on outside click
   useEffect(() => {
     const handler = () => setOpenFilter(null);
     document.addEventListener("click", handler);
@@ -278,7 +277,11 @@ export default function SymbolTable() {
 
         <TableBody>
           {symbols.map((s) => (
-            <TableRow key={s.symbol}>
+            <TableRow
+              key={s.symbol}
+              className="cursor-pointer"
+              onClick={() => navigate(`/symbol/${s.symbol}`)}
+            >
               <TableCell>{s.symbol}</TableCell>
               <TableCell>{s.name}</TableCell>
               <TableCell>{s.latestPrice ?? "-"}</TableCell>

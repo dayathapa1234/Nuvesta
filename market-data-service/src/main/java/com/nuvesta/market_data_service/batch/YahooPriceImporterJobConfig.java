@@ -1,6 +1,7 @@
 package com.nuvesta.market_data_service.batch;
 
 import com.nuvesta.market_data_service.model.DailyPrice;
+import com.nuvesta.market_data_service.model.SymbolInfo;
 import com.nuvesta.market_data_service.repository.DailyPriceRepository;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
 import com.nuvesta.market_data_service.service.YahooFinanceClient;
@@ -30,8 +31,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @Profile("!test")
@@ -43,18 +46,19 @@ public class YahooPriceImporterJobConfig {
     private final SymbolInfoRepository symbolInfoRepository;
     private final DailyPriceRepository dailyPriceRepository;
     private final YahooFinanceClient yahooFinanceClient;
-
-    /** Optional polite delay between HTTP calls */
     private final long requestDelayMs;
+    private final List<String> configuredSymbols;
 
     public YahooPriceImporterJobConfig(SymbolInfoRepository symbolInfoRepository,
                                        DailyPriceRepository dailyPriceRepository,
                                        YahooFinanceClient yahooFinanceClient,
-                                       @Value("${yahoo.request.delay-ms:800}") long requestDelayMs) {
+                                       @Value("${yahoo.request.delay-ms:800}") long requestDelayMs,
+                                       @Value("${yahoo.symbols:}") String yahooSymbols) {
         this.symbolInfoRepository = symbolInfoRepository;
         this.dailyPriceRepository = dailyPriceRepository;
         this.yahooFinanceClient = yahooFinanceClient;
         this.requestDelayMs = requestDelayMs;
+        this.configuredSymbols = parseSymbols(yahooSymbols);
     }
 
     @Bean
@@ -81,14 +85,16 @@ public class YahooPriceImporterJobConfig {
     @StepScope
     public ItemReader<DailyPrice> yahooPriceReader() {
 
-        // Use a thread-safe list because we'll populate it from multiple threads
         List<DailyPrice> buffer = Collections.synchronizedList(new ArrayList<>());
 
         final LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
-        final LocalDate endEff = lastWeekday(todayUtc); // avoid empty weekend/holiday windows
+        final LocalDate endEff = lastWeekday(todayUtc);
 
-        // Fetch history for all symbols in parallel to speed up large imports
-        symbolInfoRepository.findAll().parallelStream().forEach(info -> {
+        List<SymbolInfo> infos = configuredSymbols.isEmpty()
+                ? symbolInfoRepository.findAll()
+                : symbolInfoRepository.findAllById(configuredSymbols);
+
+        infos.parallelStream().forEach(info -> {
             String symbol = info.getSymbol();
 
             LocalDate lastDate = dailyPriceRepository.findTopBySymbolOrderByDateDesc(symbol)
@@ -97,7 +103,6 @@ public class YahooPriceImporterJobConfig {
 
             LocalDate start = (lastDate == null) ? LocalDate.of(1990, 1, 1) : lastDate.plusDays(1);
 
-            // Nothing to fetch? Skip early (prevents extra Yahoo calls & resolver churn)
             if (start.isAfter(endEff)) {
                 if (log.isDebugEnabled()) {
                     log.debug("Skip {}: start {} > end {}", symbol, start, endEff);
@@ -123,7 +128,6 @@ public class YahooPriceImporterJobConfig {
                 if (log.isDebugEnabled()) log.debug("No rows returned for {}", symbol);
             }
 
-            // Be polite to Yahoo (and reduce 429s)
             if (requestDelayMs > 0) {
                 try { Thread.sleep(requestDelayMs); }
                 catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
@@ -169,11 +173,20 @@ public class YahooPriceImporterJobConfig {
         };
     }
 
-    /** Map weekends to the previous Friday; simple holiday handling can be added later if needed. */
     private static LocalDate lastWeekday(LocalDate d) {
         DayOfWeek dow = d.getDayOfWeek();
         if (dow == DayOfWeek.SATURDAY) return d.minusDays(1);
         if (dow == DayOfWeek.SUNDAY)   return d.minusDays(2);
         return d;
+    }
+
+    private static List<String> parseSymbols(String raw) {
+        if (raw == null) return Collections.emptyList();
+        String trim = raw.trim();
+        if (trim.isEmpty() || trim.equalsIgnoreCase("full")) return Collections.emptyList();
+        return Arrays.stream(trim.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
     }
 }

@@ -16,10 +16,11 @@ spring:
 alphavantage:
   api:
     key: KOCQERY640FBBCKJ
+yahoo:
+  symbols: ""
 logging:
   level:
     org.springframework.jdbc.datasource.init: INFO
     org.springframework.batch.core: INFO
-
 server:
   port: 8081
