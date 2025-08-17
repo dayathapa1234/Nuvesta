@@ -11,6 +11,7 @@ import {
   TableHead,
   TableCell,
 } from "./ui/table";
+import LoadingScreen from "./LoadingScreen";
 
 interface SymbolInfo {
   symbol: string;
@@ -85,6 +86,7 @@ export default function SymbolTable() {
   );
   const [sortField, setSortField] = useState<keyof SymbolInfo | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const handler = () => setOpenFilter(null);
@@ -156,6 +158,7 @@ export default function SymbolTable() {
 
   return (
     <div className="space-y-4">
+      <LoadingScreen show={loading} />
       <Input
         placeholder="Search by symbol or name"
         value={keyword}

@@ -7,7 +7,7 @@ export default function PricePage() {
   if (!symbol) return null;
   return (
     <div className="p-4 flex justify-center">
-      <Card className="w-full max-w-5xl">
+      <Card className="w-full max-w-5xl backdrop-blur-md bg-background/60">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">{symbol}</CardTitle>
         </CardHeader>
