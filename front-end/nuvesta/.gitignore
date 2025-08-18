@@ -25,3 +25,4 @@ dist-ssr
 
 nuvesta/node_modules
 nuvesta/dist
+src/routeTree.gen.ts

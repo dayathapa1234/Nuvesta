@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import {
@@ -30,18 +31,24 @@ function useAnchorRect(open: boolean) {
 
   useLayoutEffect(() => {
     if (!open) return;
+    let rafId: number | null = null;
     const update = () => {
-      if (ref.current) setRect(ref.current.getBoundingClientRect());
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (ref.current) {
+          setRect(ref.current.getBoundingClientRect());
+        }
+      });
     };
     update();
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
   }, [open]);
-
   return { ref, rect };
 }
 
@@ -73,20 +80,15 @@ function PortalDropdown({
 
 export default function SymbolTable() {
   const navigate = useNavigate();
-  const [symbols, setSymbols] = useState<SymbolInfo[]>([]);
   const [keyword, setKeyword] = useState("");
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
   const [assetTypeFilter, setAssetTypeFilter] = useState<string[]>([]);
-  const [allExchanges, setAllExchanges] = useState<string[]>([]);
-  const [allAssetTypes, setAllAssetTypes] = useState<string[]>([]);
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [openFilter, setOpenFilter] = useState<"exchange" | "asset" | null>(
     null
   );
   const [sortField, setSortField] = useState<keyof SymbolInfo | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const handler = () => setOpenFilter(null);
@@ -94,45 +96,53 @@ export default function SymbolTable() {
     return () => document.removeEventListener("click", handler);
   }, []);
 
-  // preload filter lists
-  useEffect(() => {
-    fetch("/api/symbol-filters")
-      .then((res) => res.json())
-      .then((data) => {
-        setAllExchanges(data.exchanges || []);
-        setAllAssetTypes(data.assetTypes || []);
-      })
-      .catch(() => {
-        setAllExchanges([]);
-        setAllAssetTypes([]);
-      });
-  }, []);
+  const { data: filterData } = useQuery({
+    queryKey: ["symbol-filters"],
+    queryFn: async () => {
+      const res = await fetch("/api/symbol-filters");
+      return res.json() as Promise<{
+        exchanges: string[];
+        assetTypes: string[];
+      }>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // data fetch
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (keyword) params.append("keyword", keyword);
-    exchangeFilter.forEach((e) => params.append("exchange", e));
-    assetTypeFilter.forEach((a) => params.append("asset_type", a));
-    if (sortField) {
-      params.append("sortBy", sortField);
-      params.append("order", sortAsc ? "asc" : "desc");
-    }
-    params.append("page", page.toString());
-    params.append("size", "30");
+  const allExchanges = filterData?.exchanges || [];
+  const allAssetTypes = filterData?.assetTypes || [];
 
-    fetch(`/api/paginatedSymbols?${params.toString()}`)
-      .then(async (res) => {
-        const data: SymbolInfo[] = await res.json();
-        const tp = Number(res.headers.get("X-Total-Pages") ?? "0");
-        setTotalPages(tp);
-        setSymbols(data);
-      })
-      .catch(() => {
-        setSymbols([]);
-        setTotalPages(0);
-      });
-  }, [keyword, exchangeFilter, assetTypeFilter, page, sortField, sortAsc]);
+  const symbolsQuery = useQuery({
+    queryKey: [
+      "symbols",
+      keyword,
+      exchangeFilter,
+      assetTypeFilter,
+      page,
+      sortField,
+      sortAsc,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (keyword) params.append("keyword", keyword);
+      exchangeFilter.forEach((e) => params.append("exchange", e));
+      assetTypeFilter.forEach((a) => params.append("asset_type", a));
+      if (sortField) {
+        params.append("sortBy", sortField);
+        params.append("order", sortAsc ? "asc" : "desc");
+      }
+      params.append("page", page.toString());
+      params.append("size", "30");
+      const res = await fetch(`/api/paginatedSymbols?${params.toString()}`);
+      const data: SymbolInfo[] = await res.json();
+      const totalPages = Number(res.headers.get("X-Total-Pages") ?? "0");
+      return { data, totalPages };
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 30000,
+  });
+  const symbols = symbolsQuery.data?.data || [];
+  const totalPages = symbolsQuery.data?.totalPages || 0;
+  const loading = symbolsQuery.isFetching;
 
   const toggleValue = (
     value: string,
@@ -283,7 +293,12 @@ export default function SymbolTable() {
             <TableRow
               key={s.symbol}
               className="cursor-pointer"
-              onClick={() => navigate(`/symbol/${s.symbol}`)}
+              onClick={() =>
+                navigate({
+                  to: "/symbol/$symbol",
+                  params: { symbol: s.symbol },
+                })
+              }
             >
               <TableCell>{s.symbol}</TableCell>
               <TableCell>{s.name}</TableCell>

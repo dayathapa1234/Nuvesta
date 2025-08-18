@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
-import LoadingScreen from "./LoadingScreen";
+import { useQuery } from "@tanstack/react-query";
+import LoadingScreen from "./LoadingScreen";␊
 import {
   ChartContainer,
   ChartTooltip,
@@ -21,30 +21,22 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function PriceChart({ symbol }: { symbol: string }) {
-  console.log("PriceChart", symbol);
-  const [data, setData] = useState<PricePoint[]>([]);
-  const [loading, setLoading] = useState(false);
-
   const formatDate = (value: number) => new Date(value).toLocaleDateString();
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/prices?symbol=${symbol}`)
-      .then((res) => res.json())
-      .then((d: PricePoint[]) => setData(d))
-      .catch(() => setData([]))
-      .finally(() => setLoading(false));
-  }, [symbol]);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["prices", symbol],
+    queryFn: async () => {
+      const res = await fetch(`/api/prices?symbol=${symbol}`);
+      return (await res.json()) as PricePoint[];
+    },
+    staleTime: 30000,
+  });
 
   return (
     <>
-      <LoadingScreen show={loading} />
+      <LoadingScreen show={isLoading} />
       <ChartContainer config={chartConfig} className="h-64 w-full">
-        <LineChart
-          accessibilityLayer
-          data={data}
-          margin={{ left: 12, right: 12 }}
-        >
+        <LineChart accessibilityLayer data={data} margin={{ left: 12, right: 12 }}>
           <CartesianGrid vertical={false} />
           <XAxis
             dataKey="time"

@@ -29,6 +29,11 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --glass-from: #dbe1e3;
+    --glass-via: #d8e4e9;
+    --glass-to: #a7c7cb;
+    --glass-card-bg: rgba(192, 203, 205, 0.4);
+    --glass-card-border: rgba(176, 184, 186, 0.6);
   }
   .dark {
     --border: 0 0% 14.9%;
@@ -55,14 +60,22 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --glass-from: #1a2021;
+    --glass-via: #202729;
+    --glass-to: #2a3335;
+    --glass-card-bg: rgba(32, 42, 45, 0.6);
+    --glass-card-border: rgba(255, 255, 255, 0.1);
   }
   body {
-    background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    background: linear-gradient(
+      to bottom right,
+      var(--glass-from),
+      var(--glass-via),
+      var(--glass-to)
+    );
   }
 }
-
-
 
 @layer base {
   * {
