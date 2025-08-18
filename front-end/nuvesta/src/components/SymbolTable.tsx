@@ -138,7 +138,7 @@ export default function SymbolTable() {
       return { data, totalPages };
     },
     placeholderData: keepPreviousData,
-    staleTime: 30000,
+    staleTime: 5 * 60 * 1000,
   });
   const symbols = symbolsQuery.data?.data || [];
   const totalPages = symbolsQuery.data?.totalPages || 0;

@@ -1,6 +1,6 @@
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import LoadingScreen from "./LoadingScreen";␊
+import LoadingScreen from "./LoadingScreen";
 import {
   ChartContainer,
   ChartTooltip,
@@ -29,14 +29,18 @@ export default function PriceChart({ symbol }: { symbol: string }) {
       const res = await fetch(`/api/prices?symbol=${symbol}`);
       return (await res.json()) as PricePoint[];
     },
-    staleTime: 30000,
+    staleTime: 5 * 60 * 1000,
   });
 
   return (
     <>
       <LoadingScreen show={isLoading} />
       <ChartContainer config={chartConfig} className="h-64 w-full">
-        <LineChart accessibilityLayer data={data} margin={{ left: 12, right: 12 }}>
+        <LineChart
+          accessibilityLayer
+          data={data}
+          margin={{ left: 12, right: 12 }}
+        >
           <CartesianGrid vertical={false} />
           <XAxis
             dataKey="time"
