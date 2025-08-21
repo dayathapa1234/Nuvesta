@@ -1,4 +1,5 @@
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import LoadingScreen from "./LoadingScreen";
 import {
@@ -13,6 +14,16 @@ interface PricePoint {
   price: number;
 }
 
+interface ChartPoint extends PricePoint {
+  dateLabel: string;
+}
+
+function downsampleToMax<T>(data: T[], maxPoints: number): T[] {
+  if (data.length <= maxPoints) return data;
+  const step = Math.ceil(data.length / maxPoints);
+  return data.filter((_, i) => i % step === 0);
+}
+
 const chartConfig = {
   price: {
     label: "Price",
@@ -21,16 +32,21 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function PriceChart({ symbol }: { symbol: string }) {
-  const formatDate = (value: number) => new Date(value).toLocaleDateString();
-
-  const { data = [], isLoading } = useQuery({
+  const { data: points = [], isLoading } = useQuery({
     queryKey: ["prices", symbol],
-    queryFn: async () => {
+    queryFn: async (): Promise<PricePoint[]> => {
       const res = await fetch(`/api/prices?symbol=${symbol}`);
       return (await res.json()) as PricePoint[];
     },
     staleTime: 5 * 60 * 1000,
+    select: (points: PricePoint[]): ChartPoint[] =>
+      points.map((p) => ({
+        ...p,
+        dateLabel: new Date(p.time).toLocaleDateString(),
+      })),
   });
+
+  const data = useMemo(() => downsampleToMax(points, 500), [points]);
 
   return (
     <>
@@ -43,20 +59,18 @@ export default function PriceChart({ symbol }: { symbol: string }) {
         >
           <CartesianGrid vertical={false} />
           <XAxis
-            dataKey="time"
+            dataKey="dateLabel"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={formatDate}
           />
           <ChartTooltip
             cursor={false}
             content={
               <ChartTooltipContent
-                labelFormatter={(_, payload) => {
-                  const date = (payload?.[0]?.payload as PricePoint)?.time;
-                  return date ? formatDate(date) : "";
-                }}
+                labelFormatter={(_, payload) =>
+                  payload?.[0]?.payload?.dateLabel ?? ""
+                }
               />
             }
           />
