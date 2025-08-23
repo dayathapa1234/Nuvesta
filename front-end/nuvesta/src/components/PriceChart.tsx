@@ -8,11 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "./ui/chart";
-
-interface PricePoint {
-  time: number;
-  price: number;
-}
+import getPrices, { type PricePoint } from "../api/getPrices";
 
 interface ChartPoint extends PricePoint {
   dateLabel: string;
@@ -34,10 +30,7 @@ const chartConfig = {
 export default function PriceChart({ symbol }: { symbol: string }) {
   const { data: points = [], isLoading } = useQuery({
     queryKey: ["prices", symbol],
-    queryFn: async (): Promise<PricePoint[]> => {
-      const res = await fetch(`/api/prices?symbol=${symbol}`);
-      return (await res.json()) as PricePoint[];
-    },
+    queryFn: () => getPrices(symbol),
     staleTime: 5 * 60 * 1000,
     select: (points: PricePoint[]): ChartPoint[] =>
       points.map((p) => ({

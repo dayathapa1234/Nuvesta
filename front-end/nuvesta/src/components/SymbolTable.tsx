@@ -13,17 +13,11 @@ import {
   TableCell,
 } from "./ui/table";
 import LoadingScreen from "./LoadingScreen";
-
-interface SymbolInfo {
-  symbol: string;
-  name: string;
-  exchange: string;
-  assetType: string;
-  ipoDate: string;
-  delistingDate: string;
-  status: string;
-  latestPrice: number | null;
-}
+import getSymbolFilters, { type SymbolFilters } from "../api/getSymbolFilters";
+import getPaginatedSymbols, {
+  type SymbolInfo,
+  type PaginatedSymbolsResponse,
+} from "../api/getPaginatedSymbols";
 
 function useAnchorRect(open: boolean) {
   const ref = useRef<HTMLSpanElement | null>(null);
@@ -96,22 +90,16 @@ export default function SymbolTable() {
     return () => document.removeEventListener("click", handler);
   }, []);
 
-  const { data: filterData } = useQuery({
+  const { data: filterData } = useQuery<SymbolFilters>({
     queryKey: ["symbol-filters"],
-    queryFn: async () => {
-      const res = await fetch("/api/symbol-filters");
-      return res.json() as Promise<{
-        exchanges: string[];
-        assetTypes: string[];
-      }>;
-    },
+    queryFn: getSymbolFilters,
     staleTime: 5 * 60 * 1000,
   });
 
   const allExchanges = filterData?.exchanges || [];
   const allAssetTypes = filterData?.assetTypes || [];
 
-  const symbolsQuery = useQuery({
+  const symbolsQuery = useQuery<PaginatedSymbolsResponse>({
     queryKey: [
       "symbols",
       keyword,
@@ -121,7 +109,7 @@ export default function SymbolTable() {
       sortField,
       sortAsc,
     ],
-    queryFn: async () => {
+    queryFn: () => {
       const params = new URLSearchParams();
       if (keyword) params.append("keyword", keyword);
       exchangeFilter.forEach((e) => params.append("exchange", e));
@@ -132,14 +120,12 @@ export default function SymbolTable() {
       }
       params.append("page", page.toString());
       params.append("size", "30");
-      const res = await fetch(`/api/paginatedSymbols?${params.toString()}`);
-      const data: SymbolInfo[] = await res.json();
-      const totalPages = Number(res.headers.get("X-Total-Pages") ?? "0");
-      return { data, totalPages };
+      return getPaginatedSymbols(params);
     },
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   });
+
   const symbols = symbolsQuery.data?.data || [];
   const totalPages = symbolsQuery.data?.totalPages || 0;
   const loading = symbolsQuery.isFetching;
