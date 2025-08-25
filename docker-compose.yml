@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  market-data-db:
+    image: postgres:latest
+    container_name: market-data-db
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - market-data-db-data:/var/lib/postgresql/data
+
+  market-data-service:
+    build: ./market-data-service
+    container_name: market-data-service
+    depends_on:
+      - market-data-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://market-data-db:5432/mydatabase
+      SPRING_DATASOURCE_USERNAME: myuser
+      SPRING_DATASOURCE_PASSWORD: secret
+    ports:
+      - "8081:8081"
+
+  front-end:
+    build: ./front-end/nuvesta
+    container_name: nuvesta-frontend
+    depends_on:
+      - market-data-service
+    ports:
+      - "5173:80"
+
+volumes:
+  market-data-db-data:
