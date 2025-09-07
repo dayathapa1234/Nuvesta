@@ -1,9 +1,9 @@
-FROM ghcr.io/graalvm/jdk:21 AS build
+FROM ghcr.io/graalvm/native-image-community:21 AS build
 
 WORKDIR /app
 
-# These JDK images are OracleLinux-based and include package managers
-RUN microdnf install -y findutils && microdnf clean all
+RUN microdnf install -y gcc zlib-devel findutils && \
+    microdnf clean all
 
 COPY build.gradle settings.gradle gradlew gradlew.bat ./
 COPY gradle ./gradle

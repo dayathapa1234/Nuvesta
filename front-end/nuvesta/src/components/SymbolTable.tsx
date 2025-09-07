@@ -12,6 +12,7 @@ import {
   TableHead,
   TableCell,
 } from "./ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import LoadingScreen from "./LoadingScreen";
 import getSymbolFilters, { type SymbolFilters } from "../api/getSymbolFilters";
 import getPaginatedSymbols, {
@@ -153,171 +154,180 @@ export default function SymbolTable() {
   const { ref: asRef, rect: asRect } = useAnchorRect(asOpen);
 
   return (
-    <div className="space-y-4">
-      <LoadingScreen show={loading} />
-      <Input
-        placeholder="Search by symbol or name"
-        value={keyword}
-        onChange={(e) => {
-          setKeyword(e.target.value);
-          setPage(0);
-        }}
-      />
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {/* Symbol */}
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => {
-                if (sortField === "symbol") setSortAsc(!sortAsc);
-                else {
-                  setSortField("symbol");
-                  setSortAsc(true);
-                }
+    <>
+      <Card className="mx-auto w-full max-w-6xl">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold mb-4">Symbols</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <LoadingScreen show={loading} />
+            <Input
+              placeholder="Search by symbol or name"
+              value={keyword}
+              onChange={(e) => {
+                setKeyword(e.target.value);
                 setPage(0);
               }}
-            >
-              {`Symbol${sortIndicator("symbol")}`}
-            </TableHead>
+            />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {/* Symbol */}
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (sortField === "symbol") setSortAsc(!sortAsc);
+                      else {
+                        setSortField("symbol");
+                        setSortAsc(true);
+                      }
+                      setPage(0);
+                    }}
+                  >
+                    {`Symbol${sortIndicator("symbol")}`}
+                  </TableHead>
 
-            {/* Name */}
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => {
-                if (sortField === "name") setSortAsc(!sortAsc);
-                else {
-                  setSortField("name");
-                  setSortAsc(true);
-                }
-                setPage(0);
-              }}
-            >
-              {`Name${sortIndicator("name")}`}
-            </TableHead>
+                  {/* Name */}
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (sortField === "name") setSortAsc(!sortAsc);
+                      else {
+                        setSortField("name");
+                        setSortAsc(true);
+                      }
+                      setPage(0);
+                    }}
+                  >
+                    {`Name${sortIndicator("name")}`}
+                  </TableHead>
 
-            {/* Latest Price */}
-            <TableHead>Latest Price</TableHead>
+                  {/* Latest Price */}
+                  <TableHead>Latest Price</TableHead>
 
-            {/* Exchange */}
-            <TableHead>
-              <div className="flex items-center">
-                <span
-                  className="cursor-pointer select-none"
-                  onClick={() => {
-                    if (sortField === "exchange") setSortAsc(!sortAsc);
-                    else {
-                      setSortField("exchange");
-                      setSortAsc(true);
+                  {/* Exchange */}
+                  <TableHead>
+                    <div className="flex items-center">
+                      <span
+                        className="cursor-pointer select-none"
+                        onClick={() => {
+                          if (sortField === "exchange") setSortAsc(!sortAsc);
+                          else {
+                            setSortField("exchange");
+                            setSortAsc(true);
+                          }
+                          setPage(0);
+                        }}
+                      >
+                        {`Exchange${sortIndicator("exchange")}`}
+                      </span>
+                      <span
+                        ref={exRef}
+                        className="ml-1 cursor-pointer select-none"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenFilter(exOpen ? null : "exchange");
+                        }}
+                      >
+                        ▾
+                      </span>
+                    </div>
+                  </TableHead>
+
+                  {/* Asset Type */}
+                  <TableHead>
+                    <div className="flex items-center">
+                      <span
+                        className="cursor-pointer select-none"
+                        onClick={() => {
+                          if (sortField === "assetType") setSortAsc(!sortAsc);
+                          else {
+                            setSortField("assetType");
+                            setSortAsc(true);
+                          }
+                          setPage(0);
+                        }}
+                      >
+                        {`Asset Type${sortIndicator("assetType")}`}
+                      </span>
+                      <span
+                        ref={asRef}
+                        className="ml-1 cursor-pointer select-none"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenFilter(asOpen ? null : "asset");
+                        }}
+                      >
+                        ▾
+                      </span>
+                    </div>
+                  </TableHead>
+
+                  {/* IPO Date - Sort only */}
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (sortField === "ipoDate") setSortAsc(!sortAsc);
+                      else {
+                        setSortField("ipoDate");
+                        setSortAsc(true);
+                      }
+                      setPage(0);
+                    }}
+                  >
+                    {`IPO Date${sortIndicator("ipoDate")}`}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {symbols.map((s) => (
+                  <TableRow
+                    key={s.symbol}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      navigate({
+                        to: "/symbol/$symbol",
+                        params: { symbol: s.symbol },
+                      })
                     }
-                    setPage(0);
-                  }}
-                >
-                  {`Exchange${sortIndicator("exchange")}`}
-                </span>
-                <span
-                  ref={exRef}
-                  className="ml-1 cursor-pointer select-none"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenFilter(exOpen ? null : "exchange");
-                  }}
-                >
-                  ▼
-                </span>
-              </div>
-            </TableHead>
+                  >
+                    <TableCell>{s.symbol}</TableCell>
+                    <TableCell>{s.name}</TableCell>
+                    <TableCell>{s.latestPrice ?? "-"}</TableCell>
+                    <TableCell>{s.exchange}</TableCell>
+                    <TableCell>{s.assetType}</TableCell>
+                    <TableCell>{s.ipoDate}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-            {/* Asset Type */}
-            <TableHead>
-              <div className="flex items-center">
-                <span
-                  className="cursor-pointer select-none"
-                  onClick={() => {
-                    if (sortField === "assetType") setSortAsc(!sortAsc);
-                    else {
-                      setSortField("assetType");
-                      setSortAsc(true);
-                    }
-                    setPage(0);
-                  }}
-                >
-                  {`Asset Type${sortIndicator("assetType")}`}
-                </span>
-                <span
-                  ref={asRef}
-                  className="ml-1 cursor-pointer select-none"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenFilter(asOpen ? null : "asset");
-                  }}
-                >
-                  ▼
-                </span>
-              </div>
-            </TableHead>
-
-            {/* IPO Date - Sort only */}
-            <TableHead
-              className="cursor-pointer"
-              onClick={() => {
-                if (sortField === "ipoDate") setSortAsc(!sortAsc);
-                else {
-                  setSortField("ipoDate");
-                  setSortAsc(true);
-                }
-                setPage(0);
-              }}
-            >
-              {`IPO Date${sortIndicator("ipoDate")}`}
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-
-        <TableBody>
-          {symbols.map((s) => (
-            <TableRow
-              key={s.symbol}
-              className="cursor-pointer"
-              onClick={() =>
-                navigate({
-                  to: "/symbol/$symbol",
-                  params: { symbol: s.symbol },
-                })
-              }
-            >
-              <TableCell>{s.symbol}</TableCell>
-              <TableCell>{s.name}</TableCell>
-              <TableCell>{s.latestPrice ?? "-"}</TableCell>
-              <TableCell>{s.exchange}</TableCell>
-              <TableCell>{s.assetType}</TableCell>
-              <TableCell>{s.ipoDate}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <div className="flex items-center justify-end space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((p) => Math.max(p - 1, 0))}
-          disabled={page === 0}
-        >
-          Previous
-        </Button>
-        <span className="text-sm">
-          Page {page + 1} of {totalPages}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
-          disabled={page + 1 >= totalPages}
-        >
-          Next
-        </Button>
-      </div>
+            <div className="flex items-center justify-end space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                disabled={page === 0}
+              >
+                Previous
+              </Button>
+              <span className="text-sm">
+                Page {page + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+                disabled={page + 1 >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Exchange filter dropdown */}
       {exOpen && (
@@ -354,6 +364,7 @@ export default function SymbolTable() {
           ))}
         </PortalDropdown>
       )}
-    </div>
+    </>
   );
 }
+

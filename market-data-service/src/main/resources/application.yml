@@ -17,7 +17,7 @@ alphavantage:
   api:
     key: KOCQERY640FBBCKJ
 yahoo:
-  symbols: ""
+  symbols: "^GSPC"
 logging:
   level:
     org.springframework.jdbc.datasource.init: INFO

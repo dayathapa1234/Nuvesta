@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   market-data-db:
     image: postgres:latest

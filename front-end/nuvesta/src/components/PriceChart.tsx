@@ -1,7 +1,9 @@
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import LoadingScreen from "./LoadingScreen";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import {
   ChartContainer,
   ChartTooltip,
@@ -27,7 +29,8 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export default function PriceChart({ symbol }: { symbol: string }) {
+export default function PriceChart() {
+  const { symbol } = useParams({ from: "/symbol/$symbol" });
   const { data: points = [], isLoading } = useQuery({
     queryKey: ["prices", symbol],
     queryFn: () => getPrices(symbol),
@@ -42,40 +45,45 @@ export default function PriceChart({ symbol }: { symbol: string }) {
   const data = useMemo(() => downsampleToMax(points, 500), [points]);
 
   return (
-    <>
-      <LoadingScreen show={isLoading} />
-      <ChartContainer config={chartConfig} className="h-64 w-full">
-        <LineChart
-          accessibilityLayer
-          data={data}
-          margin={{ left: 12, right: 12 }}
-        >
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey="dateLabel"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-          />
-          <ChartTooltip
-            cursor={false}
-            content={
-              <ChartTooltipContent
-                labelFormatter={(_, payload) =>
-                  payload?.[0]?.payload?.dateLabel ?? ""
+      <Card className="mx-auto w-full max-w-5xl">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">{symbol}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LoadingScreen show={isLoading} />
+          <ChartContainer config={chartConfig} className="h-64 w-full">
+            <LineChart
+              accessibilityLayer
+              data={data}
+              margin={{ left: 12, right: 12 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="dateLabel"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) =>
+                      payload?.[0]?.payload?.dateLabel ?? ""
+                    }
+                  />
                 }
               />
-            }
-          />
-          <Line
-            dataKey="price"
-            type="natural"
-            stroke="var(--color-price)"
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
-      </ChartContainer>
-    </>
+              <Line
+                dataKey="price"
+                type="natural"
+                stroke="var(--color-price)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
   );
 }
