@@ -14,10 +14,12 @@ export interface PaginatedSymbolsResponse {
   totalPages: number;
 }
 
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || "";
+
 export default async function getPaginatedSymbols(
   params: URLSearchParams
 ): Promise<PaginatedSymbolsResponse> {
-  const res = await fetch(`/api/paginatedSymbols?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/api/paginatedSymbols?${params.toString()}`);
   const data = (await res.json()) as SymbolInfo[];
   const totalPages = Number(res.headers.get("X-Total-Pages") ?? "0");
   return { data, totalPages };

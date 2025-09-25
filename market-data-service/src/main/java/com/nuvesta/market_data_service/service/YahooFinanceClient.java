@@ -79,7 +79,7 @@ public class YahooFinanceClient {
                     if (log.isDebugEnabled()) log.debug("Already tried {} in this fetch, skipping duplicate", sym);
                     return List.of();
                 }
-                return filterWindow(tryChart(sym, p1, p2), from, to);
+                return filterWindow(tryChartWithRetry(sym, p1, p2), from, to);
             };
 
             // 0) cached alias
@@ -194,6 +194,21 @@ public class YahooFinanceClient {
             log.warn("Chart call failed for {}: {}", symbol, e.toString());
             return List.of();
         }
+    }
+
+    private List<DailyPrice> tryChartWithRetry(String symbol, long period1, long period2) {
+        final int maxAttempts = 4;
+        long backoff = 800L; // ms
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            List<DailyPrice> rows = tryChart(symbol, period1, period2);
+            if (!rows.isEmpty()) return rows;
+
+            if (attempt < maxAttempts) {
+                try { Thread.sleep(backoff); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                backoff *= 2;
+            }
+        }
+        return List.of();
     }
 
     private Optional<String> resolveSymbol(String raw) {
