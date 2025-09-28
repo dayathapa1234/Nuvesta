@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+﻿import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Input } from "./ui/input";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Table,
@@ -21,7 +22,7 @@ import getPaginatedSymbols, {
 } from "../api/getPaginatedSymbols";
 
 function useAnchorRect(open: boolean) {
-  const ref = useRef<HTMLSpanElement | null>(null);
+  const ref = useRef<HTMLButtonElement | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
   useLayoutEffect(() => {
@@ -63,7 +64,7 @@ function PortalDropdown({
 
   return createPortal(
     <div
-      className="absolute z-50 max-h-60 overflow-auto rounded border bg-white p-2 shadow"
+      className="absolute z-50 max-h-60 overflow-auto rounded border border-[var(--glass-popover-border)] bg-[var(--glass-popover-bg)] p-2 text-foreground shadow backdrop-blur-md"
       style={{ top, left, width }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -144,8 +145,14 @@ export default function SymbolTable() {
     setPage(0);
   };
 
-  const sortIndicator = (field: keyof SymbolInfo) =>
-    sortField === field ? (sortAsc ? " ↑" : " ↓") : "";
+  const sortIndicator = (field: keyof SymbolInfo): JSX.Element | null => {
+    if (sortField !== field) return null;
+    return sortAsc ? (
+      <ChevronUp className="h-3.5 w-3.5" aria-label="sorted ascending" />
+    ) : (
+      <ChevronDown className="h-3.5 w-3.5" aria-label="sorted descending" />
+    );
+  };
 
   // anchor refs for dropdowns
   const exOpen = openFilter === "exchange";
@@ -185,7 +192,10 @@ export default function SymbolTable() {
                       setPage(0);
                     }}
                   >
-                    {`Symbol${sortIndicator("symbol")}`}
+                    <span className="inline-flex items-center gap-1">
+                      Symbol
+                      {sortIndicator("symbol")}
+                    </span>
                   </TableHead>
 
                   {/* Name */}
@@ -200,7 +210,10 @@ export default function SymbolTable() {
                       setPage(0);
                     }}
                   >
-                    {`Name${sortIndicator("name")}`}
+                    <span className="inline-flex items-center gap-1">
+                      Name
+                      {sortIndicator("name")}
+                    </span>
                   </TableHead>
 
                   {/* Latest Price */}
@@ -210,7 +223,7 @@ export default function SymbolTable() {
                   <TableHead>
                     <div className="flex items-center">
                       <span
-                        className="cursor-pointer select-none"
+                        className="inline-flex items-center gap-1 cursor-pointer select-none"
                         onClick={() => {
                           if (sortField === "exchange") setSortAsc(!sortAsc);
                           else {
@@ -220,18 +233,21 @@ export default function SymbolTable() {
                           setPage(0);
                         }}
                       >
-                        {`Exchange${sortIndicator("exchange")}`}
+                        Exchange
+                        {sortIndicator("exchange")}
                       </span>
-                      <span
+                      <button
                         ref={exRef}
-                        className="ml-1 cursor-pointer select-none"
+                        type="button"
+                        className="ml-1 flex h-5 w-5 items-center justify-center rounded border border-transparent bg-transparent text-foreground/70 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenFilter(exOpen ? null : "exchange");
                         }}
+                        aria-label="Toggle exchange filter"
                       >
-                        ▾
-                      </span>
+                        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </div>
                   </TableHead>
 
@@ -239,7 +255,7 @@ export default function SymbolTable() {
                   <TableHead>
                     <div className="flex items-center">
                       <span
-                        className="cursor-pointer select-none"
+                        className="inline-flex items-center gap-1 cursor-pointer select-none"
                         onClick={() => {
                           if (sortField === "assetType") setSortAsc(!sortAsc);
                           else {
@@ -249,21 +265,23 @@ export default function SymbolTable() {
                           setPage(0);
                         }}
                       >
-                        {`Asset Type${sortIndicator("assetType")}`}
+                        Asset Type
+                        {sortIndicator("assetType")}
                       </span>
-                      <span
+                      <button
                         ref={asRef}
-                        className="ml-1 cursor-pointer select-none"
+                        type="button"
+                        className="ml-1 flex h-5 w-5 items-center justify-center rounded border border-transparent bg-transparent text-foreground/70 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenFilter(asOpen ? null : "asset");
                         }}
+                        aria-label="Toggle asset type filter"
                       >
-                        ▾
-                      </span>
+                        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </div>
                   </TableHead>
-
                   {/* IPO Date - Sort only */}
                   <TableHead
                     className="cursor-pointer"
@@ -276,7 +294,10 @@ export default function SymbolTable() {
                       setPage(0);
                     }}
                   >
-                    {`IPO Date${sortIndicator("ipoDate")}`}
+                    <span className="inline-flex items-center gap-1">
+                      IPO Date
+                      {sortIndicator("ipoDate")}
+                    </span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -367,4 +388,14 @@ export default function SymbolTable() {
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
 
