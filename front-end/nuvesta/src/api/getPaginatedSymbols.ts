@@ -1,4 +1,4 @@
-export interface SymbolInfo {
+﻿export interface SymbolInfo {
   symbol: string;
   name: string;
   exchange: string;
@@ -14,7 +14,7 @@ export interface PaginatedSymbolsResponse {
   totalPages: number;
 }
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || "";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 export default async function getPaginatedSymbols(
   params: URLSearchParams
