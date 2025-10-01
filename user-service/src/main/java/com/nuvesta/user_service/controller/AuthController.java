@@ -1,6 +1,7 @@
 package com.nuvesta.user_service.controller;
 
 import com.nuvesta.user_service.dto.AuthResponse;
+import com.nuvesta.user_service.dto.LoginRequest;
 import com.nuvesta.user_service.dto.RegisterRequest;
 import com.nuvesta.user_service.service.AuthService;
 import jakarta.validation.Valid;
@@ -23,5 +24,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody @Valid RegisterRequest request){
         return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request){
+        return ResponseEntity.ok(authService.login(request));
     }
 }
