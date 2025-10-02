@@ -3,6 +3,7 @@ package com.nuvesta.user_service.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
 @ControllerAdvice
@@ -31,6 +33,18 @@ public class GlobalExceptionHandler {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(this::formatFieldError)
                 .collect(Collectors.joining(", "));
+        return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        String message = "Malformed request payload";
+        Throwable cause = ex.getMostSpecificCause();
+        if (cause instanceof DateTimeParseException) {
+            message = "Invalid date format. Use yyyy-MM-dd";
+        } else if (cause.getMessage() != null) {
+            message = cause.getMessage();
+        }
         return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
     }
 
