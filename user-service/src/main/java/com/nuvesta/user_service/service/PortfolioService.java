@@ -9,14 +9,11 @@ import com.nuvesta.user_service.model.PortfolioHolding;
 import com.nuvesta.user_service.model.UserAccount;
 import com.nuvesta.user_service.repository.PortfolioHoldingRepository;
 import com.nuvesta.user_service.repository.PortfolioRepository;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
-
 
 @Service
 public class PortfolioService {
@@ -65,6 +62,30 @@ public class PortfolioService {
         PortfolioHolding saved = portfolioHoldingRepository.save(holding);
         portfolio.getHoldings().add(saved);
         return mapHolding(saved);
+    }
+
+    @Transactional
+    public void deletePortfolio(String portfolioId) {
+        Portfolio portfolio = getOwnedPortfolio(portfolioId);
+        portfolioRepository.delete(portfolio);
+    }
+
+    @Transactional
+    public PortfolioResponse clearHoldings(String portfolioId) {
+        Portfolio portfolio = getOwnedPortfolio(portfolioId);
+        if (!portfolio.getHoldings().isEmpty()) {
+            portfolio.getHoldings().clear();
+        }
+        return mapPortfolio(portfolio);
+    }
+
+    @Transactional
+    public void deleteHolding(String portfolioId, String holdingId) {
+        Portfolio portfolio = getOwnedPortfolio(portfolioId);
+        PortfolioHolding holding = portfolioHoldingRepository.findByIdAndPortfolioId(holdingId, portfolioId)
+                .orElseThrow(() -> new IllegalArgumentException("Holding not found in portfolio"));
+        portfolio.getHoldings().removeIf(existing -> existing.getId().equals(holdingId));
+        portfolioHoldingRepository.delete(holding);
     }
 
     private Portfolio getOwnedPortfolio(String portfolioId){

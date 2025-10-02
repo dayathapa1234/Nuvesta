@@ -35,4 +35,21 @@ public class PortfolioController {
     public ResponseEntity<HoldingResponse> addHolding(@PathVariable String portfolioId, @RequestBody @Valid HoldingRequest request) {
         return ResponseEntity.ok(portfolioService.addHolding(portfolioId, request));
     }
+
+    @DeleteMapping("/{portfolioId}")
+    public ResponseEntity<Void> deletePortfolio(@PathVariable String portfolioId){
+        portfolioService.deletePortfolio(portfolioId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{portfolioId}/holdings")
+    public ResponseEntity<PortfolioResponse> clearHoldings(@PathVariable String portfolioId) {
+        return ResponseEntity.ok(portfolioService.clearHoldings(portfolioId));
+    }
+
+    @DeleteMapping("/{portfolioId}/holdings/{holdingId}")
+    public ResponseEntity<Void> deleteHolding(@PathVariable String portfolioId, @PathVariable String holdingId){
+        portfolioService.deleteHolding(portfolioId, holdingId);
+        return ResponseEntity.noContent().build();
+    }
 }
