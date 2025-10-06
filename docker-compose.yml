@@ -27,7 +27,7 @@ services:
     build:
       context: ./front-end/nuvesta
       args:
-        VITE_API_BASE: "http://localhost:8081"
+        VITE_API_BASE: "http://localhost:8081"\n      VITE_AUTH_BASE: "http://localhost:8080"
     container_name: nuvesta-frontend
     depends_on:
       - market-data-service

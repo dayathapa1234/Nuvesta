@@ -1,4 +1,4 @@
-import type { AuthSession } from "@/lib/auth";
+import type { AuthSession } from "../lib/auth";
 
 export interface LoginPayload {
   email: string;
@@ -48,7 +48,7 @@ async function postAuth(path: string, body: unknown): Promise<AuthSession> {
   return (await response.json()) as AuthSession;
 }
 
-export async function login(payload: LoginPayLoad) {
+export async function login(payload: LoginPayload) {
   return postAuth("/api/auth/login", payload);
 }
 
