@@ -10,6 +10,17 @@ services:
       - "5432:5432"
     volumes:
       - market-data-db-data:/var/lib/postgresql/data
+  user-db:
+    image: postgres:16
+    container_name: user-db
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: nuvesta
+      POSTGRES_PASSWORD: nuvesta
+    ports:
+      - "5433:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
 
   market-data-service:
     build: ./market-data-service
@@ -22,6 +33,17 @@ services:
       SPRING_DATASOURCE_PASSWORD: secret
     ports:
       - "8081:8081"
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    depends_on:
+      - user-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/userdb
+      SPRING_DATASOURCE_USERNAME: nuvesta
+      SPRING_DATASOURCE_PASSWORD: nuvesta
+    ports:
+      - "8080:8080"
 
   front-end:
     build:
@@ -31,8 +53,10 @@ services:
     container_name: nuvesta-frontend
     depends_on:
       - market-data-service
+      - user-service
     ports:
       - "5173:80"
 
 volumes:
   market-data-db-data:
+  user-db-data:
