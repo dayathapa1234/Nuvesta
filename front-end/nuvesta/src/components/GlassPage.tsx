@@ -20,7 +20,9 @@ export function GlassPage({ backgroundUrl, children }: GlassPageProps) {
         <AuthStatus />
         <ModeToggle />
       </div>
-      <div className="relative z-10 h-full p-6 md:p-12">{children}</div>
+      <div className="relative z-10 h-full p-6 pt-24 sm:pt-28 md:p-12 md:pt-32">
+        {children}
+      </div>
     </div>
   );
 }
