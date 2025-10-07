@@ -33,6 +33,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: secret
     ports:
       - "8081:8081"
+
   user-service:
     build: ./user-service
     container_name: user-service
@@ -45,15 +46,30 @@ services:
     ports:
       - "8080:8080"
 
+  gateway:
+    build: ./gateway
+    container_name: user-service
+    depends_on:
+      - user-service
+      - market-data-service
+    environment:
+      USER_SERVICE_URI: http://user-service:8080
+      MARKET_DATA_SERVICE_URI: http://market-data-service:8081
+      SERVER_PORT: 8085
+    ports:
+      - "8085:8085"
+
   front-end:
     build:
       context: ./front-end/nuvesta
       args:
-        VITE_API_BASE: "http://localhost:8081"\n      VITE_AUTH_BASE: "http://localhost:8080"
+        VITE_API_BASE: "http://localhost:8085"
+        VITE_AUTH_BASE: "http://localhost:8085"
     container_name: nuvesta-frontend
     depends_on:
       - market-data-service
       - user-service
+      - gateway
     ports:
       - "5173:80"
 
