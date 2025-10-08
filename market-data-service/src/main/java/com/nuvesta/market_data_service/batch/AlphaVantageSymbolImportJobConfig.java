@@ -113,9 +113,19 @@ public class AlphaVantageSymbolImportJobConfig {
     public ItemWriter<SymbolInfo> symbolInfoWriter(DataSource dataSource) {
         return new JdbcBatchItemWriterBuilder<SymbolInfo>()
                 .dataSource(dataSource)
-                .sql("INSERT INTO symbol_info (symbol, name, exchange, asset_type, ipo_date, delisting_date, status) " +
-                        "VALUES (:symbol, :name, :exchange, :assetType, :ipoDate, :delistingDate, :status)")
+                .sql("""
+                        INSERT INTO symbol_info (symbol, name, exchange, asset_type, ipo_date, delisting_date, status)
+                        VALUES (:symbol, :name, :exchange, :assetType, :ipoDate, :delistingDate, :status)
+                        ON CONFLICT (symbol) DO UPDATE SET
+                            name = EXCLUDED.name,
+                            exchange = EXCLUDED.exchange,
+                            asset_type = EXCLUDED.asset_type,
+                            ipo_date = EXCLUDED.ipo_date,
+                            delisting_date = EXCLUDED.delisting_date,
+                            status = EXCLUDED.status
+                        """)
                 .beanMapped()
+                .assertUpdates(false)
                 .build();
     }
 

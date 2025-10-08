@@ -1,5 +1,6 @@
 package com.nuvesta.market_data_service.batch;
 
+import com.nuvesta.market_data_service.events.SymbolCatalogLoadedEvent;
 import com.nuvesta.market_data_service.model.SymbolInfo;
 import com.nuvesta.market_data_service.repository.DailyPriceRepository;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
@@ -9,7 +10,6 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -45,8 +45,8 @@ public class YahooPriceSyncScheduler {
         this.configuredSymbols = parseSymbols(yahooSymbols);
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void loadOnStartup() throws Exception {
+    @EventListener(SymbolCatalogLoadedEvent.class)
+    public void onSymbolCatalogLoaded(SymbolCatalogLoadedEvent event) throws Exception {
         runJobIfMissing();
     }
 

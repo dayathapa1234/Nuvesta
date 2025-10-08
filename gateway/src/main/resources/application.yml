@@ -7,6 +7,10 @@ spring:
   main:
     web-application-type: reactive
   cloud:
+    discovery:
+      locator:
+        enabled: true
+        lower-case-service-id: true
     gateway:
       default-filters:
         - RemoveRequestHeader=Cookie
@@ -16,10 +20,11 @@ spring:
             allowedOrigins: "*"
             allowedMethods: "*"
             allowedHeaders: "*"
+            exposedHeaders: "X-Total-Pages,X-Total-Elements"
             allowCredentials: false
       routes:
         - id: user-auth-route
-          uri: ${USER_SERVICE_URI:http://user-service:8080}
+          uri: ${USER_SERVICE_URI:lb://user-service}
           predicates:
             - Path=/api/auth/**
           filters:
@@ -28,7 +33,7 @@ spring:
                 name: userAuthCircuitBreaker
                 fallbackUri: forward:/fallback/auth
         - id: user-service-route
-          uri: ${USER_SERVICE_URI:http://user-service:8080}
+          uri: ${USER_SERVICE_URI:lb://user-service}
           predicates:
             - Path=/api/portfolios/**
           filters:
@@ -37,14 +42,23 @@ spring:
                 name: userServiceCircuitBreaker
                 fallbackUri: forward:/fallback/user
         - id: market-data-route
-          uri: ${MARKET_DATA_SERVICE_URI:http://market-data-service:8081}
+          uri: ${MARKET_DATA_SERVICE_URI:lb://market-data-service}
           predicates:
-            - Path=/api/symbols/**,/api/symbol-filters/**,/api/paginatedSymbols/**
+            - Path=/api/symbols,/api/symbols/**,/api/symbol-filters,/api/symbol-filters/**,/api/paginatedSymbols,/api/paginatedSymbols/**,/api/prices,/api/prices/**
           filters:
             - name: CircuitBreaker
               args:
                 name: marketDataCircuitBreaker
                 fallbackUri: forward:/fallback/market-data
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
 
 jwt:
   secret: ${JWT_SECRET:YmFja2RhdGVkLXNlY3JldC1rZXktZm9yLW51dmVzdGE=}

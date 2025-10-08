@@ -30,8 +30,8 @@ import javax.sql.DataSource;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -75,7 +75,7 @@ public class YahooPriceImporterJobConfig {
                                      @Qualifier("yahooPriceReader") ItemReader<DailyPrice> yahooPriceReader,
                                      @Qualifier("yahooPriceWriter") ItemWriter<DailyPrice> yahooPriceWriter) {
         return new StepBuilder("yahooPriceImportStep", jobRepository)
-                .<DailyPrice, DailyPrice>chunk(5000, transactionManager)
+                .<DailyPrice, DailyPrice>chunk(1000, transactionManager)
                 .reader(yahooPriceReader)
                 .writer(yahooPriceWriter)
                 .build();
@@ -84,62 +84,80 @@ public class YahooPriceImporterJobConfig {
     @Bean
     @StepScope
     public ItemReader<DailyPrice> yahooPriceReader() {
-
-        List<DailyPrice> buffer = Collections.synchronizedList(new ArrayList<>());
-
         final LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
         final LocalDate endEff = lastWeekday(todayUtc);
 
-        List<SymbolInfo> infos = configuredSymbols.isEmpty()
+        List<SymbolInfo> symbolsToProcess = configuredSymbols.isEmpty()
                 ? symbolInfoRepository.findAll()
                 : symbolInfoRepository.findAllById(configuredSymbols);
 
-        infos.parallelStream().forEach(info -> {
-            String symbol = info.getSymbol();
-
-            LocalDate lastDate = dailyPriceRepository.findTopBySymbolOrderByDateDesc(symbol)
-                    .map(DailyPrice::getDate)
-                    .orElse(null);
-
-            LocalDate start = (lastDate == null) ? LocalDate.of(1990, 1, 1) : lastDate.plusDays(1);
-
-            if (start.isAfter(endEff)) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Skip {}: start {} > end {}", symbol, start, endEff);
-                }
-                return;
-            }
-
-            log.info("Yahoo fetch window {}: {} → {}", symbol, start, endEff);
-
-            List<DailyPrice> fetched = yahooFinanceClient.fetchHistory(symbol, start, endEff);
-
-            if (!fetched.isEmpty()) {
-                // Extra guard to avoid re-inserting older rows
-                for (DailyPrice p : fetched) {
-                    if (lastDate == null || p.getDate().isAfter(lastDate)) {
-                        buffer.add(p);
-                    }
-                }
-                LocalDate min = fetched.stream().map(DailyPrice::getDate).min(LocalDate::compareTo).orElse(null);
-                LocalDate max = fetched.stream().map(DailyPrice::getDate).max(LocalDate::compareTo).orElse(null);
-                log.info("Fetched {} rows for {} ({} → {})", fetched.size(), symbol, min, max);
-            } else {
-                if (log.isDebugEnabled()) log.debug("No rows returned for {}", symbol);
-            }
-
-            if (requestDelayMs > 0) {
-                try { Thread.sleep(requestDelayMs); }
-                catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-            }
-        });
+        Iterator<SymbolInfo> symbolIterator = symbolsToProcess.iterator();
 
         return new ItemReader<>() {
-            private int idx = 0;
+            private Iterator<DailyPrice> currentPrices = Collections.emptyIterator();
+
             @Override
-            public DailyPrice read() {
-                if (idx < buffer.size()) return buffer.get(idx++);
-                return null;
+            public synchronized DailyPrice read() {
+                while (!currentPrices.hasNext()) {
+                    if (!symbolIterator.hasNext()) {
+                        return null;
+                    }
+
+                    SymbolInfo info = symbolIterator.next();
+                    String symbol = info.getSymbol();
+
+                    LocalDate lastDate = dailyPriceRepository.findTopBySymbolOrderByDateDesc(symbol)
+                            .map(DailyPrice::getDate)
+                            .orElse(null);
+
+                    LocalDate startDate = (lastDate == null) ? LocalDate.of(1990, 1, 1) : lastDate.plusDays(1);
+
+                    if (startDate.isAfter(endEff)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Skip {}: start {} > end {}", symbol, startDate, endEff);
+                        }
+                        continue;
+                    }
+
+                    log.info("Yahoo fetch window {}: {} -> {}", symbol, startDate, endEff);
+
+                    List<DailyPrice> fetched = yahooFinanceClient.fetchHistory(symbol, startDate, endEff);
+
+                    if (requestDelayMs > 0) {
+                        try {
+                            Thread.sleep(requestDelayMs);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            throw new IllegalStateException("Interrupted while throttling Yahoo requests", ie);
+                        }
+                    }
+
+                    if (fetched.isEmpty()) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("No rows returned for {}", symbol);
+                        }
+                        continue;
+                    }
+
+                    List<DailyPrice> filtered = fetched.stream()
+                            .filter(p -> lastDate == null || p.getDate().isAfter(lastDate))
+                            .collect(Collectors.toList());
+
+                    if (filtered.isEmpty()) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("No new rows for {}", symbol);
+                        }
+                        continue;
+                    }
+
+                    LocalDate min = filtered.stream().map(DailyPrice::getDate).min(LocalDate::compareTo).orElse(null);
+                    LocalDate max = filtered.stream().map(DailyPrice::getDate).max(LocalDate::compareTo).orElse(null);
+                    log.info("Queued {} rows for {} ({} -> {})", filtered.size(), symbol, min, max);
+
+                    currentPrices = filtered.iterator();
+                }
+
+                return currentPrices.next();
             }
         };
     }

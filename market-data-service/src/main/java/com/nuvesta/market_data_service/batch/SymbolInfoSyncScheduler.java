@@ -1,5 +1,6 @@
 package com.nuvesta.market_data_service.batch;
 
+import com.nuvesta.market_data_service.events.SymbolCatalogLoadedEvent;
 import com.nuvesta.market_data_service.model.SymbolInfo;
 import com.nuvesta.market_data_service.repository.SymbolInfoRepository;
 import com.nuvesta.market_data_service.service.MarketDataService;
@@ -8,6 +9,7 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,12 +27,18 @@ public class SymbolInfoSyncScheduler {
     private final MarketDataService marketDataService;
     private final JobLauncher jobLauncher;
     private final Job importSymbolJob;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public SymbolInfoSyncScheduler(SymbolInfoRepository repository, MarketDataService marketDataService, JobLauncher jobLauncher, Job importSymbolJob) {
+    public SymbolInfoSyncScheduler(SymbolInfoRepository repository,
+                                   MarketDataService marketDataService,
+                                   JobLauncher jobLauncher,
+                                   Job importSymbolJob,
+                                   ApplicationEventPublisher eventPublisher) {
         this.repository = repository;
         this.marketDataService = marketDataService;
         this.jobLauncher = jobLauncher;
         this.importSymbolJob = importSymbolJob;
+        this.eventPublisher = eventPublisher;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -40,6 +48,10 @@ public class SymbolInfoSyncScheduler {
                     .addLong("startAt", System.currentTimeMillis())
                     .toJobParameters();
             jobLauncher.run(importSymbolJob, params);
+        }
+
+        if (repository.count() > 0) {
+            eventPublisher.publishEvent(new SymbolCatalogLoadedEvent(this));
         }
     }
 
@@ -55,6 +67,7 @@ public class SymbolInfoSyncScheduler {
 
         if (!newSymbols.isEmpty()) {
             repository.saveAll(newSymbols);
+            eventPublisher.publishEvent(new SymbolCatalogLoadedEvent(this));
         }
     }
 }

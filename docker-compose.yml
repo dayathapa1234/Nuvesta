@@ -1,4 +1,10 @@
 services:
+  discovery-server:
+    build: ./discovery-server
+    container_name: discovery-server
+    ports:
+      - "8761:8761"
+
   market-data-db:
     image: postgres:latest
     container_name: market-data-db
@@ -10,6 +16,7 @@ services:
       - "5432:5432"
     volumes:
       - market-data-db-data:/var/lib/postgresql/data
+
   user-db:
     image: postgres:16
     container_name: user-db
@@ -27,10 +34,14 @@ services:
     container_name: market-data-service
     depends_on:
       - market-data-db
+      - discovery-server
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://market-data-db:5432/mydatabase
       SPRING_DATASOURCE_USERNAME: myuser
       SPRING_DATASOURCE_PASSWORD: secret
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      SERVER_PORT: 8081
+      YAHOO_UPDATE_ENABLED: "true"
     ports:
       - "8081:8081"
 
@@ -39,22 +50,27 @@ services:
     container_name: user-service
     depends_on:
       - user-db
+      - discovery-server
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/userdb
       SPRING_DATASOURCE_USERNAME: nuvesta
       SPRING_DATASOURCE_PASSWORD: nuvesta
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      SERVER_PORT: 8080
     ports:
       - "8080:8080"
 
   gateway:
     build: ./gateway
-    container_name: user-service
+    container_name: gateway
     depends_on:
       - user-service
       - market-data-service
+      - discovery-server
     environment:
-      USER_SERVICE_URI: http://user-service:8080
-      MARKET_DATA_SERVICE_URI: http://market-data-service:8081
+      USER_SERVICE_URI: lb://user-service
+      MARKET_DATA_SERVICE_URI: lb://market-data-service
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
       SERVER_PORT: 8085
     ports:
       - "8085:8085"

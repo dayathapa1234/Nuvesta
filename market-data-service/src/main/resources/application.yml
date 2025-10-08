@@ -1,12 +1,20 @@
+server:
+  port: ${SERVER_PORT:8081}
+
 spring:
+  application:
+    name: market-data-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/mydatabase}
+    username: ${SPRING_DATASOURCE_USERNAME:myuser}
+    password: ${SPRING_DATASOURCE_PASSWORD:secret}
+    driver-class-name: org.postgresql.Driver
   batch:
     verbose: true
     jdbc:
       initialize-schema: never
     job:
       enabled: true
-  application:
-    name: market-data-service
   jpa:
     hibernate:
       ddl-auto: update
@@ -18,19 +26,26 @@ spring:
   threads:
     virtual:
       enable: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
 alphavantage:
   api:
     key: KOCQERY640FBBCKJ
 yahoo:
-  symbols: "^GSPC"
-  update:
-    enabled: false
+  symbols: ""
+
 logging:
   level:
     org.springframework.jdbc.datasource.init: INFO
     org.springframework.batch.core: INFO
-server:
-  port: 8081
 stooq:
   update:
     enabled: false
