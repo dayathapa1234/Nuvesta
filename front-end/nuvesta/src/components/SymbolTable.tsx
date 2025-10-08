@@ -92,14 +92,22 @@ export default function SymbolTable() {
     return () => document.removeEventListener("click", handler);
   }, []);
 
-  const { data: filterData } = useQuery<SymbolFilters>({
+  const {
+    data: filterData,
+    isError: filterError,
+    error: filterErrorValue,
+  } = useQuery<SymbolFilters>({
     queryKey: ["symbol-filters"],
     queryFn: getSymbolFilters,
     staleTime: 5 * 60 * 1000,
   });
 
-  const allExchanges = filterData?.exchanges || [];
-  const allAssetTypes = filterData?.assetTypes || [];
+  const allExchanges = Array.isArray(filterData?.exchanges)
+    ? [...filterData.exchanges]
+    : [];
+  const allAssetTypes = Array.isArray(filterData?.assetTypes)
+    ? [...filterData.assetTypes]
+    : [];
 
   const symbolsQuery = useQuery<PaginatedSymbolsResponse>({
     queryKey: [
@@ -128,9 +136,25 @@ export default function SymbolTable() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const symbols = symbolsQuery.data?.data || [];
-  const totalPages = symbolsQuery.data?.totalPages || 0;
+  const symbolsData = symbolsQuery.data?.data;
+  const symbols = Array.isArray(symbolsData) ? symbolsData : [];
+  const rawTotalPages = symbolsQuery.data?.totalPages;
+  const totalPages =
+    typeof rawTotalPages === "number" && Number.isFinite(rawTotalPages)
+      ? rawTotalPages
+      : 0;
   const loading = symbolsQuery.isFetching;
+  const hasSymbolError = symbolsQuery.isError;
+  const symbolErrorMessage =
+    symbolsQuery.error instanceof Error
+      ? symbolsQuery.error.message
+      : "Unable to load symbols";
+  const filterErrorMessage =
+    filterError && filterErrorValue instanceof Error
+      ? filterErrorValue.message
+      : filterError
+        ? "Unable to load filters"
+        : null;
 
   const toggleValue = (
     value: string,
@@ -169,6 +193,22 @@ export default function SymbolTable() {
         <CardContent>
           <div className="space-y-4">
             <LoadingScreen show={loading} />
+            {filterErrorMessage ? (
+              <p
+                role="alert"
+                className="rounded border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {filterErrorMessage}
+              </p>
+            ) : null}
+            {hasSymbolError ? (
+              <p
+                role="alert"
+                className="rounded border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {symbolErrorMessage}
+              </p>
+            ) : null}
             <Input
               placeholder="Search by symbol or name"
               value={keyword}
