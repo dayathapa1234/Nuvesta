@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 @Profile("!test")
 public class SymbolInfoSyncScheduler {
 
+    private static final long MIN_SYMBOL_BOOTSTRAP_COUNT = 100;
+
     private final SymbolInfoRepository repository;
     private final MarketDataService marketDataService;
     private final JobLauncher jobLauncher;
@@ -43,14 +45,16 @@ public class SymbolInfoSyncScheduler {
 
     @EventListener(ApplicationReadyEvent.class)
     public void loadOnStartup() throws Exception {
-        if (repository.count() == 0){
+        long existingSymbols = repository.count();
+        if (existingSymbols < MIN_SYMBOL_BOOTSTRAP_COUNT){
             JobParameters params = new JobParametersBuilder()
                     .addLong("startAt", System.currentTimeMillis())
                     .toJobParameters();
             jobLauncher.run(importSymbolJob, params);
+            existingSymbols = repository.count();
         }
 
-        if (repository.count() > 0) {
+        if (existingSymbols > 0) {
             eventPublisher.publishEvent(new SymbolCatalogLoadedEvent(this));
         }
     }
