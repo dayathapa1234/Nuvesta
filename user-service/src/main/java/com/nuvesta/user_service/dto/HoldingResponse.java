@@ -7,8 +7,13 @@ import java.time.LocalDate;
 
 public record HoldingResponse(
         String id,
+
         String symbol,
+
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate purchaseDate,
-        BigDecimal priceAtPurchase
+
+        BigDecimal priceAtPurchase,
+
+        BigDecimal quantity
 ) {}

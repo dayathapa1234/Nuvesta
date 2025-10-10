@@ -28,8 +28,24 @@ public class PortfolioHolding {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal priceAtPurchase;
 
+    @Column(
+            nullable = false,
+            precision = 19,
+            scale = 4,
+            columnDefinition = "numeric(19,4) default 1"
+    )
+    @Builder.Default
+    private BigDecimal quantity = BigDecimal.ONE;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "portfolio_id", nullable = false)
     @JsonBackReference
     private Portfolio portfolio;
+
+    @PrePersist
+    void prePersist() {
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            quantity = BigDecimal.ONE;
+        }
+    }
 }

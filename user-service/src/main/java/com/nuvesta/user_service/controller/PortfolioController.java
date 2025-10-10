@@ -31,9 +31,26 @@ public class PortfolioController {
         return ResponseEntity.ok(portfolioService.createPortfolio(request));
     }
 
+    @PutMapping("/{portfolioId}")
+    public ResponseEntity<PortfolioResponse> updatePortfolio(
+            @PathVariable String portfolioId,
+            @RequestBody @Valid PortfolioRequest request
+    ) {
+        return ResponseEntity.ok(portfolioService.updatePortfolio(portfolioId, request));
+    }
+
     @PostMapping("/{portfolioId}/holdings")
     public ResponseEntity<HoldingResponse> addHolding(@PathVariable String portfolioId, @RequestBody @Valid HoldingRequest request) {
         return ResponseEntity.ok(portfolioService.addHolding(portfolioId, request));
+    }
+
+    @PutMapping("/{portfolioId}/holdings/{holdingId}")
+    public ResponseEntity<HoldingResponse> updateHolding(
+            @PathVariable String portfolioId,
+            @PathVariable String holdingId,
+            @RequestBody @Valid HoldingRequest request
+    ) {
+        return ResponseEntity.ok(portfolioService.updateHolding(portfolioId, holdingId, request));
     }
 
     @DeleteMapping("/{portfolioId}")

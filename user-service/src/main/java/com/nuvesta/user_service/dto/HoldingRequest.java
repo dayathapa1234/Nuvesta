@@ -11,10 +11,16 @@ import java.time.LocalDate;
 public record HoldingRequest(
         @NotBlank(message = "Symbol is required")
         String symbol,
+
         @NotNull(message = "Purchase date is required")
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate purchaseDate,
+
         @NotNull(message = "Price is required")
         @DecimalMin(value = "0.0", inclusive = false, message = "Price must be positive")
-        BigDecimal price
+        BigDecimal price,
+
+        @NotNull(message = "Quantity is required")
+        @DecimalMin(value = "0.0", inclusive = false, message = "Quantity must be positive")
+        BigDecimal quantity
 ) {}
